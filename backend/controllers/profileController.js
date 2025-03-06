@@ -104,10 +104,25 @@ const deleteOwnProfile = asyncHandler(async (req, res) => {
   await profile.deleteOne();
   res.json({ message: "Profile deleted successfully" });
 });
+const viewAllProfiles = asyncHandler(async (req, res) => {
+  try {
+    const profiles = await Profile.find().populate("user", "name email userimage followers following");
 
+    if (!profiles || profiles.length === 0) {
+      res.status(404);
+      throw new Error("No profiles found");
+    }
+
+    res.status(200).json(profiles);
+  } catch (error) {
+    console.error("Error fetching profiles:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
 module.exports = {
   createProfile,
   viewOwnProfile,
   updateOwnProfile,
   deleteOwnProfile,
+  viewAllProfiles,
 };

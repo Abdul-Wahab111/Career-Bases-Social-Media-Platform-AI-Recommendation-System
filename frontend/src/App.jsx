@@ -8,6 +8,16 @@ import Chat from "./pages/Chat";
 import HomePage from "./pages/HomePage";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
+import ProfilesList from "./pages/ProfilesList";
+import UserProfile from "./pages/UserProfile";
+import NotFound from "./pages/NotFound";
+
+// Protected route component
+const ProtectedRoute = ({ children }) => {
+  const isLoggedIn = !!localStorage.getItem("token");
+  return isLoggedIn ? children : <Navigate to="/login" replace />;
+};
+
 function App() {
   const isLoggedIn = !!localStorage.getItem("token");
 
@@ -24,32 +34,59 @@ function App() {
           path="/register"
           element={!isLoggedIn ? <Register /> : <Navigate to="/posts" />}
         />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
         {/* Private Routes */}
         <Route
           path="/posts"
-          element={isLoggedIn ? <Posts /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <Posts />
+            </ProtectedRoute>
+          }
         />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route
           path="/profile"
-          element={isLoggedIn ? <Profile /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profiles"
+          element={
+            <ProtectedRoute>
+              <ProfilesList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/:userId"
+          element={
+            <ProtectedRoute>
+              <UserProfile />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/chat"
-          element={isLoggedIn ? <Chat /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/logout"
           element={
-            isLoggedIn ? <Logout /> : <Navigate to="/login" replace={true} />
+            isLoggedIn ? <Logout /> : <Navigate to="/login" replace />
           }
         />
-        ;{/* Catch-all Route */}
-        <Route
-          path="*"
-          element={<Navigate to={isLoggedIn ? "/" : "/login"} />}
-        />
+
+        {/* Catch-all Route */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

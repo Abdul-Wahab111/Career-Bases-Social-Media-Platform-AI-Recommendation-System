@@ -41,12 +41,15 @@ const postRoutes = require("./routes/postRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const jobRoutes =  require("./routes/jobRoutes")
+const userFollowRoutes = require("./routes/userFollowRoutes");
+
 // Routes - after CORS and body parser middleware
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/messages", messageRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use("/api/users", userFollowRoutes);
 
 const server = http.createServer(app);
 

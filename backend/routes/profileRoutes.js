@@ -6,6 +6,7 @@ const {
   viewOwnProfile,
   updateOwnProfile,
   deleteOwnProfile,
+  viewAllProfiles, // New controller function
 } = require("../controllers/profileController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -14,5 +15,6 @@ router.post("/", protect, createProfile); // Create profile
 router.get("/me", protect, viewOwnProfile); // View own profile
 router.put("/me", protect, updateOwnProfile); // Update own profile
 router.delete("/me", protect, deleteOwnProfile); // Delete own profile
+router.get("/", protect, viewAllProfiles); // View all profiles (NEW)
 
 module.exports = router;

@@ -1,191 +1,196 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
-import moment from "moment";
-import { 
-  Image as ImageIcon, 
-  Heart, 
-  MessageCircle, 
-  Send, 
-  Video, 
-  FileText, 
-  Globe 
-} from "lucide-react";
-import Layout from "../components/Layout";
-import PostCard from "../components/PostCard";
+"use client"
+
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import axios from "axios"
+import { jwtDecode } from "jwt-decode"
+import { User, Loader } from "lucide-react"
+import Layout from "../components/Layout"
+import PostCard from "../components/posts/PostCard"
+import CreatePost from "../components/posts/CreatePost" // Added CreatePost component
 
 const HomePage = () => {
-  const [posts, setPosts] = useState([]);
-  const [text, setText] = useState("");
-  const [image, setImage] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const navigate = useNavigate();
+  const [posts, setPosts] = useState([])
+  const [following, setFollowing] = useState([])
+  const [userId, setUserId] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [activeFilter, setActiveFilter] = useState("all") // "all" or "following"
+  const navigate = useNavigate()
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token")
     try {
       if (token) {
-        const decoded = jwtDecode(token);
-        const id = decoded._id || decoded.id;
-        setUserId(id);
-        fetchPosts(); // Fetch posts after setting user ID
+        const decoded = jwtDecode(token)
+        const id = decoded._id || decoded.id
+        setUserId(id)
+        fetchFollowing(id) // Fetch following list first
       } else {
-        navigate("/login");
+        navigate("/login")
       }
     } catch (error) {
-      console.error("Token decode error:", error);
-      navigate("/login");
+      console.error("Token decode error:", error)
+      navigate("/login")
     }
-  }, [navigate]);
+  }, [navigate])
 
-  useEffect(() => {
-    if (image) {
-      const url = URL.createObjectURL(image);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
+  const fetchFollowing = async (id) => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await axios.get(`http://localhost:5000/api/users/${id}/following`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const followingData = response.data.data || []
+      const followingIds = followingData.map((user) => user._id || user.id)
+      setFollowing(followingIds)
+
+      fetchPosts()
+    } catch (error) {
+      console.error("Error fetching following list:", error)
+      fetchPosts()
     }
-  }, [image]);
+  }
 
   const fetchPosts = async () => {
     try {
-      const token = localStorage.getItem("token");
-      console.log("Fetching posts with token:", token); // Enhanced logging
+      setIsLoading(true)
+      const token = localStorage.getItem("token")
 
       const { data } = await axios.get("http://localhost:5000/api/posts/allposts", {
         headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      console.log("API Response:", data); // Log the full response
-      console.log("Posts count:", data.length); // Log number of posts
-      console.log("Posts details:", JSON.stringify(data, null, 2)); // Detailed post logging
+      })
 
-      // Additional checks
       if (!data || !Array.isArray(data)) {
-        console.error("Unexpected data format:", data);
-        setPosts([]);
-        return;
+        console.error("Unexpected data format:", data)
+        setPosts([])
+        return
       }
 
-      setPosts(data);
+      setPosts(data)
     } catch (error) {
-      console.error("Error fetching posts:", error);
-      console.error("Error details:", error.response?.data || error.message);
-      setPosts([]); // Ensure posts is an empty array on error
+      console.error("Error fetching posts:", error)
+      console.error("Error details:", error.response?.data || error.message)
+      setPosts([])
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
 
-  const handlePostSubmit = async (e) => {
-    e.preventDefault();
-    if (!text.trim()) {
-      return;
+  const handlePostCreated = (newPost) => {
+    setPosts((prevPosts) => [newPost, ...prevPosts])
+  }
+
+  const handleFollowChange = (targetUserId, isNowFollowing) => {
+    if (isNowFollowing) {
+      setFollowing((prev) => [...prev, targetUserId])
+    } else {
+      setFollowing((prev) => prev.filter((id) => id !== targetUserId))
     }
+  }
 
-    const token = localStorage.getItem("token");
-    const formData = new FormData();
-    formData.append("text", text.trim());
-    if (image) {
-      formData.append("image", image);
-    }
+  const filteredPosts =
+    activeFilter === "following" ? posts.filter((post) => following.includes(post.user?._id)) : posts
 
-    try {
-      const response = await axios.post("http://localhost:5000/api/posts", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
+  const sortedPosts =
+    activeFilter === "all"
+      ? [...filteredPosts].sort((a, b) => {
+          const aIsFollowing = following.includes(a.user?._id)
+          const bIsFollowing = following.includes(b.user?._id)
 
-      console.log("New post created:", response.data);
-      setPosts((prevPosts) => [response.data, ...prevPosts]);
-      setText("");
-      setImage(null);
-    } catch (error) {
-      console.error("Failed to create post:", error);
-      console.error("Error details:", error.response?.data || error.message);
-    }
-  };
+          if (aIsFollowing && !bIsFollowing) return -1
+          if (!aIsFollowing && bIsFollowing) return 1
+          return new Date(b.createdAt) - new Date(a.createdAt)
+        })
+      : filteredPosts
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
         {/* Create Post Section */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-              {/* User Initial */}
-            </div>
-            <form onSubmit={handlePostSubmit} className="flex-grow">
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="What's on your mind?"
-                className="w-full min-h-[100px] resize-none rounded-lg border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500"
-              />
-              {previewUrl && (
-                <div className="mt-4 relative">
-                  <img 
-                    src={previewUrl} 
-                    alt="Preview" 
-                    className="max-h-64 w-full object-cover rounded-lg" 
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setImage(null)}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-              <div className="flex justify-between items-center mt-4">
-                <div className="flex space-x-4">
-                  <label className="cursor-pointer">
-                    <ImageIcon className="text-green-500" />
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden"
-                      onChange={(e) => setImage(e.target.files?.[0] || null)}
-                    />
-                  </label>
-                  <Video className="text-blue-500" />
-                  <FileText className="text-purple-500" />
-                </div>
-                <button 
-                  type="submit" 
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Post
-                </button>
-              </div>
-            </form>
+        <div className="mb-6">
+          <CreatePost userId={userId} fetchPosts={fetchPosts} />
+        </div>
+        {/* Filter Options */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm transition-all">
+          <div className="text-lg font-semibold mb-3 sm:mb-0 text-gray-800 dark:text-gray-200">Posts Feed</div>
+          <div className="flex space-x-2 w-full sm:w-auto">
+            <button
+              onClick={() => setActiveFilter("all")}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeFilter === "all"
+                  ? "bg-blue-600 text-white shadow-md hover:bg-blue-700"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              All Posts
+            </button>
+            <button
+              onClick={() => setActiveFilter("following")}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeFilter === "following"
+                  ? "bg-blue-600 text-white shadow-md hover:bg-blue-700"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              Following
+            </button>
           </div>
         </div>
 
         {/* Posts Section */}
         <div className="space-y-6">
-          {console.log("Rendering posts:", posts)} {/* Debug log */}
-          {posts && posts.length > 0 ? (
-            posts.map((post) => {
-              console.log("Rendering individual post:", post); // Individual post log
-              return (
-                <PostCard 
-                  key={post._id} 
-                  post={post} 
-                  userId={userId} 
+          {isLoading && posts.length === 0 ? (
+            <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm transition-all">
+              <div className="flex items-center justify-center">
+                <Loader className="h-10 w-10 text-blue-500 animate-spin" />
+              </div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading your feed...</p>
+            </div>
+          ) : sortedPosts.length > 0 ? (
+            sortedPosts.map((post) => (
+              <div key={post._id} className="transform transition-all duration-200 hover:scale-[1.01] hover:shadow-md">
+                <PostCard
+                  post={post}
+                  userId={userId}
                   onPostUpdate={setPosts}
+                  following={following}
+                  onFollowChange={handleFollowChange}
+                  isLoading={isLoading}
                 />
-              );
-            })
+              </div>
+            ))
           ) : (
-            <div className="text-center text-gray-500">No posts available</div>
+            <div className="text-center bg-white dark:bg-gray-800 p-8 rounded-xl shadow-sm transition-all">
+              <div className="flex justify-center mb-4">
+                <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full">
+                  <User size={40} className="text-gray-400 dark:text-gray-500" />
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                {activeFilter === "following" ? "No posts from people you follow" : "No posts available"}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                {activeFilter === "following"
+                  ? "You aren't following anyone yet or the people you follow haven't posted. Try switching to 'All Posts' to discover users."
+                  : "Be the first to share something with the community!"}
+              </p>
+            </div>
           )}
         </div>
+
+        {/* Load More Button - Optional */}
+        {sortedPosts.length > 10 && !isLoading && (
+          <div className="mt-8 text-center">
+            <button className="px-6 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 font-medium text-sm">
+              Load More
+            </button>
+          </div>
+        )}
       </div>
     </Layout>
-  );
-};
+  )
+}
 
-export default HomePage;
+export default HomePage
+

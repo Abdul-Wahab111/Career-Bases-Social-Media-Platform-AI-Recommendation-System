@@ -8,6 +8,7 @@ const {
   verifyOTP,
   forgotPassword,
   resetPassword,
+  getCurrentUser,
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -23,6 +24,8 @@ router.post("/reset-password", resetPassword);
 
 // Protected routes
 router.get("/", protect, getUsers);
+// Important: Place the /me route BEFORE the /:id route
+router.get("/me", protect, getCurrentUser);
 router.get("/:id", protect, getUserById);
 
 module.exports = router;

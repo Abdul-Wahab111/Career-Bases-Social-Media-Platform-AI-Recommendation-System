@@ -255,6 +255,17 @@ const resetPassword = asyncHandler(async (req, res) => {
 
   res.json({ message: "Password reset successful" });
 });
+const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id)
+    .select('-password -otp -otpExpires -resetPasswordOTP -resetPasswordOTPExpires');
+  
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+  
+  res.status(200).json(user);
+});
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -264,4 +275,5 @@ module.exports = {
   getUserById,
   forgotPassword,
   resetPassword,
+  getCurrentUser,
 };

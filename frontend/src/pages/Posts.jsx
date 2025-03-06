@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import CreatePost from "../components/CreatePost";
-import PostList from "../components/PostList";
+import CreatePost from "../components/posts/CreatePost";
+import PostList from "../components/posts/PostList";
 
 const Posts = () => {
   const [posts, setPosts] = useState([]);
