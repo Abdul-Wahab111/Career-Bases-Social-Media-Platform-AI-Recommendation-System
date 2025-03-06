@@ -4,40 +4,43 @@ const Post = require("../models/postModel");
 // @desc    Create a post
 // @route   POST /api/posts
 // @access  Private
+
+
 const createPost = asyncHandler(async (req, res) => {
-  const { text } = req.body;
+  const { text, image } = req.body; // Accept image URL from frontend
+
   if (!text || text.trim() === "") {
     res.status(400);
     throw new Error("Text is required");
   }
 
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
-
   const post = await Post.create({
     user: req.user.id,
     text: text.trim(),
-    image,
+    image: image || null, // Store Cloudinary image URL
   });
 
   const populatedPost = await Post.findById(post._id)
-    .populate("user", "name email")
-    .populate({
-      path: "comments",
-      populate: {
-        path: "user",
-        select: "name",
-      },
+  .populate("user", "name email _id userimage") // Make sure _id is included
+  .populate({
+    path: "comments",
+    populate: {
+      path: "user",
+      select: "name _id", // Make sure _id is included
+    },
     });
 
   res.status(201).json(populatedPost);
 });
+
+
 
 // @desc    Get all posts
 // @route   GET /api/posts
 // @access  Private
 const getAllPosts = asyncHandler(async (req, res) => {
   const posts = await Post.find()
-    .populate("user", "name email _id") // Make sure _id is included
+    .populate("user", "name email _id userimage") // Make sure _id is included
     .populate({
       path: "comments",
       populate: {
@@ -56,13 +59,13 @@ const getAllPosts = asyncHandler(async (req, res) => {
 // @access  Private
 const getMyPosts = asyncHandler(async (req, res) => {
   const posts = await Post.find({ user: req.user.id })
-    .populate("user", "name email")
-    .populate({
-      path: "comments",
-      populate: {
-        path: "user",
-        select: "name _id",
-      },
+  .populate("user", "name email _id userimage") // Make sure _id is included
+  .populate({
+    path: "comments",
+    populate: {
+      path: "user",
+      select: "name _id", // Make sure _id is included
+    },
     })
     .sort({ createdAt: -1 });
 
@@ -96,13 +99,13 @@ const updatePost = asyncHandler(async (req, res) => {
 
   const updatedPost = await post.save();
   const populatedPost = await Post.findById(updatedPost._id)
-    .populate("user", "name email")
-    .populate({
-      path: "comments",
-      populate: {
-        path: "user",
-        select: "name _id",
-      },
+  .populate("user", "name email _id userimage") // Make sure _id is included
+  .populate({
+    path: "comments",
+    populate: {
+      path: "user",
+      select: "name _id", // Make sure _id is included
+    },
     });
 
   res.json(populatedPost);

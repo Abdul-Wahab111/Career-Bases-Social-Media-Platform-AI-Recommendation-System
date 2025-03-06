@@ -9,27 +9,27 @@ const profileSchema = mongoose.Schema(
     },
     bio: {
       type: String,
-      // required: true,
     },
     skills: {
       type: [String], // Array of skills
-      // required: true,
     },
     education: {
       type: String,
-      // required: true,
     },
     courses: {
       type: [String], // Array of courses
-      // required: false,
     },
     interests: {
       type: [String], // Array of interests
-      // required: false,
     },
     job: {
       type: String, // Job title or position
-      // required: false,
+    },
+    userimage: {
+      type: String, // URL of the profile image
+    },
+    achievements: {
+      type: [String], // Array of personal achievements
     },
   },
   { timestamps: true }

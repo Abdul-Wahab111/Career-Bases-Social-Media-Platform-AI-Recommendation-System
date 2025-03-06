@@ -115,9 +115,11 @@ const PostCard = ({ post, userId, onPostUpdate }) => {
       <div className="p-6 pb-0">
         <div className="flex justify-between items-start">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-              {post.user?.name?.[0]?.toUpperCase()}
-            </div>
+          <img
+                  src={post.userimage}
+                  alt="User"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
             <div>
               <h3 className="font-semibold text-gray-900">
                 {post.user?.name}
@@ -181,11 +183,11 @@ const PostCard = ({ post, userId, onPostUpdate }) => {
           <>
             <p className="text-gray-800 whitespace-pre-wrap">{post.text}</p>
             {post.image && (
-              <img
-                src={`http://localhost:5000${post.image}`}
-                alt="Post"
-                className="mt-4 rounded-lg max-h-96 w-full object-cover"
-              />
+               <img
+               src={post.image}
+               alt="Post"
+               className="mt-4 rounded-lg max-h-96 w-full object-cover"
+             />
             )}
           </>
         )}
