@@ -1,4 +1,3 @@
-// /models/profileModel.js
 const mongoose = require("mongoose");
 
 const profileSchema = mongoose.Schema(
@@ -10,15 +9,27 @@ const profileSchema = mongoose.Schema(
     },
     bio: {
       type: String,
-      required: true,
+      // required: true,
     },
     skills: {
       type: [String], // Array of skills
-      required: true,
+      // required: true,
     },
     education: {
       type: String,
-      required: true,
+      // required: true,
+    },
+    courses: {
+      type: [String], // Array of courses
+      // required: false,
+    },
+    interests: {
+      type: [String], // Array of interests
+      // required: false,
+    },
+    job: {
+      type: String, // Job title or position
+      // required: false,
     },
   },
   { timestamps: true }

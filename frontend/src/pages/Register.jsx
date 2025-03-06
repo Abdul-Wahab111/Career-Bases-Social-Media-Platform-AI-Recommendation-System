@@ -18,6 +18,7 @@ const Register = () => {
     email: "",
     password: "",
     confirmPassword: "",
+    otp: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -25,6 +26,8 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -63,6 +66,48 @@ const Register = () => {
     return true;
   };
 
+  const handleSendOTP = async () => {
+    if (!formData.email) {
+      setError("Please enter your email address");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await API.post("/users/send-otp", { email: formData.email });
+      setOtpSent(true);
+      setError("");
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || "Failed to send OTP";
+      setError(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!formData.otp) {
+      setError("Please enter the OTP");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await API.post("/users/verify-otp", { email: formData.email, otp: formData.otp });
+      setOtpVerified(true);
+      setError("");
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || "Invalid OTP";
+      setError(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -75,6 +120,7 @@ const Register = () => {
         name: formData.name,
         email: formData.email,
         password: formData.password,
+        otp: formData.otp,
       });
 
       setRegistrationSuccess(true);
@@ -171,7 +217,59 @@ const Register = () => {
                   onChange={handleChange}
                 />
               </div>
+              {!otpSent && (
+                <button
+                  type="button"
+                  onClick={handleSendOTP}
+                  disabled={isLoading}
+                  className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Sending OTP...
+                    </>
+                  ) : (
+                    "Send OTP"
+                  )}
+                </button>
+              )}
             </div>
+
+            {/* OTP Field */}
+            {otpSent && !otpVerified && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 block">
+                  OTP
+                </label>
+                <div className="relative group">
+                  <input
+                    type="text"
+                    name="otp"
+                    required
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white/50 focus:bg-white"
+                    placeholder="Enter OTP"
+                    value={formData.otp}
+                    onChange={handleChange}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleVerifyOTP}
+                  disabled={isLoading}
+                  className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Verifying OTP...
+                    </>
+                  ) : (
+                    "Verify OTP"
+                  )}
+                </button>
+              </div>
+            )}
 
             {/* Password Field */}
             <div className="space-y-2">
@@ -265,7 +363,7 @@ const Register = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading || registrationSuccess}
+              disabled={isLoading || registrationSuccess || !otpVerified}
               className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (

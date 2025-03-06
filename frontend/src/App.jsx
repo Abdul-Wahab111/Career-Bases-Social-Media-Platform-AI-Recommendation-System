@@ -6,6 +6,8 @@ import Profile from "./pages/Profile";
 import Logout from "./pages/Logout";
 import Chat from "./pages/Chat";
 import HomePage from "./pages/HomePage";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./components/ResetPassword";
 function App() {
   const isLoggedIn = !!localStorage.getItem("token");
 
@@ -22,14 +24,13 @@ function App() {
           path="/register"
           element={!isLoggedIn ? <Register /> : <Navigate to="/posts" />}
         />
-        
         {/* Private Routes */}
-       
         <Route
           path="/posts"
           element={isLoggedIn ? <Posts /> : <Navigate to="/login" />}
         />
-        
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route
           path="/profile"
           element={isLoggedIn ? <Profile /> : <Navigate to="/login" />}
