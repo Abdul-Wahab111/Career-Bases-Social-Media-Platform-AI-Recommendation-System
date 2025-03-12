@@ -175,6 +175,57 @@ const checkApplicationStatus = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+const getJobApplicants = async (req, res) => {
+  try {
+    console.log(`📌 Fetching applicants for job ID: ${req.params.id}`);
+    const job = await Job.findById(req.params.id)
+      .populate("applicants.user", "name email userimage")
+      .select("title applicants");
+
+    if (!job) {
+      console.log("❌ Job not found.");
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    // Optional: Check if the requester is the job poster
+    if (job.postedBy.toString() !== req.user._id.toString()) {
+      console.log("❌ Unauthorized to view applicants.");
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    console.log(`✅ Found ${job.applicants.length} applicants`);
+    res.status(200).json(job);
+  } catch (error) {
+    console.error("❌ Error fetching applicants:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+const updateApplicantStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const job = await Job.findById(req.params.id);
+
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    const applicant = job.applicants.id(req.params.applicantId);
+    if (!applicant) {
+      return res.status(404).json({ message: "Applicant not found" });
+    }
+
+    applicant.status = status;
+    await job.save();
+
+    res.status(200).json({ message: "Applicant status updated" });
+  } catch (error) {
+    console.error("Error updating applicant status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 module.exports = {
   createJob,
   getJobs,
@@ -183,4 +234,6 @@ module.exports = {
   deleteJob,
   applyForJob,
   checkApplicationStatus,
+  getJobApplicants,
+  updateApplicantStatus,
 };

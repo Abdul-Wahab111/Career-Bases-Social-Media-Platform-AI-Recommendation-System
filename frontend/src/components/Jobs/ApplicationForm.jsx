@@ -10,14 +10,19 @@ const ApplicationForm = ({ jobId, onApplicationSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState(0)
 
   // Get authentication token
-  const getAuthToken = () => {
-    return localStorage.getItem("token")
-  }
+  const getAuthToken = () => localStorage.getItem("token")
 
-  // Handle resume file upload
+  // Handle resume file selection
   const handleResumeChange = (e) => {
-    if (e.target.files[0]) {
-      setResume(e.target.files[0])
+    const file = e.target.files[0]
+    if (file) {
+      const allowedFormats = ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+      if (!allowedFormats.includes(file.type)) {
+        toast.error("Only DOC and DOCX files are allowed. PDFs and other formats are not supported.")
+        e.target.value = "" // Reset input field
+        return
+      }
+      setResume(file)
     }
   }
 
@@ -57,7 +62,7 @@ const ApplicationForm = ({ jobId, onApplicationSuccess }) => {
     e.preventDefault()
 
     if (!resume) {
-      toast.error("Please upload your resume")
+      toast.error("Please upload your resume (DOC or DOCX only).")
       return
     }
 
@@ -74,41 +79,29 @@ const ApplicationForm = ({ jobId, onApplicationSuccess }) => {
         return
       }
 
-      // Submit application with authorization header
-      const response = await axios.post(
+      // Submit application
+      await axios.post(
         `http://localhost:5000/api/jobs/${jobId}/apply`,
-        {
-          resume: resumeUrl,
-          coverLetter,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { resume: resumeUrl, coverLetter },
+        { headers: { Authorization: `Bearer ${token}` } },
       )
 
       toast.success("Application submitted successfully!")
       setResume(null)
       setCoverLetter("")
-      
-      // Call the success callback to update the parent component
-      if (onApplicationSuccess) {
-        onApplicationSuccess()
-      }
+
+      // Notify parent component
+      if (onApplicationSuccess) onApplicationSuccess()
 
       // Reset file input
       const fileInput = document.getElementById("resume-upload")
       if (fileInput) fileInput.value = ""
     } catch (error) {
       console.error("Error applying for job:", error)
-      if (error.response && error.response.status === 400 && error.response.data.message === "User has already applied") {
+      if (error.response?.status === 400 && error.response.data.message === "User has already applied") {
         toast.error("You have already applied for this position")
-        if (onApplicationSuccess) {
-          onApplicationSuccess()
-        }
-      } else if (error.response && error.response.data.message) {
-        toast.error(error.response.data.message)
       } else {
-        toast.error("Failed to submit application. Please try again.")
+        toast.error(error.response?.data?.message || "Failed to submit application. Please try again.")
       }
     } finally {
       setIsApplying(false)
@@ -121,12 +114,12 @@ const ApplicationForm = ({ jobId, onApplicationSuccess }) => {
       <form onSubmit={handleApply} className="space-y-4">
         {/* Resume Upload */}
         <div className="mb-4">
-          <label className="block text-gray-700 font-medium mb-2">Resume (PDF, DOC, DOCX)</label>
+          <label className="block text-gray-700 font-medium mb-2">Resume (DOC, DOCX only)</label>
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 transition-colors hover:border-indigo-400 focus-within:border-indigo-400">
             <input
               id="resume-upload"
               type="file"
-              accept=".pdf,.doc,.docx"
+              accept=".doc,.docx"
               onChange={handleResumeChange}
               className="hidden"
               required
@@ -150,7 +143,7 @@ const ApplicationForm = ({ jobId, onApplicationSuccess }) => {
                 {resume ? resume.name : "Click to upload your resume"}
               </span>
               <span className="text-sm text-gray-500 mt-1">
-                {!resume && "Drag and drop or click to select a file"}
+                {!resume && "Only DOC and DOCX files allowed. PDFs are not supported."}
               </span>
             </label>
           </div>
@@ -174,7 +167,7 @@ const ApplicationForm = ({ jobId, onApplicationSuccess }) => {
             value={coverLetter}
             onChange={(e) => setCoverLetter(e.target.value)}
             className="w-full border border-gray-300 rounded-lg p-3 min-h-32 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-            placeholder="Why are you a good fit for this role? What makes you stand out from other candidates?"
+            placeholder="Why are you a good fit for this role?"
           ></textarea>
         </div>
 
@@ -183,42 +176,16 @@ const ApplicationForm = ({ jobId, onApplicationSuccess }) => {
           type="submit"
           disabled={isApplying || isUploading}
           className={`w-full py-3 rounded-lg font-medium transition-all duration-300 ${
-            isApplying || isApplying || isUploading
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg"
-        }`}
-      >
-        {isApplying ? (
-          <div className="flex items-center justify-center">
-            <svg
-              className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            Submitting Application...
-          </div>
-        ) : (
-          "Submit Application"
-        )}
-      </button>
-    </form>
-  </>
-)
+            isApplying || isUploading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg"
+          }`}
+        >
+          {isApplying ? "Submitting..." : "Submit Application"}
+        </button>
+      </form>
+    </>
+  )
 }
 
 export default ApplicationForm

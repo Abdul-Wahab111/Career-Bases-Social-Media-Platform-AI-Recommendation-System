@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const JobList = ({ jobs, fetchJobs }) => {
   const [editingJob, setEditingJob] = useState(null);
@@ -13,6 +13,7 @@ const JobList = ({ jobs, fetchJobs }) => {
     coursesPreferred: "",
     interests: "",
   });
+  const [showApplicants, setShowApplicants] = useState(null); // Track which job's applicants are shown
 
   // Ensure jobs is always an array
   const safeJobs = Array.isArray(jobs) ? jobs : [];
@@ -103,6 +104,11 @@ const JobList = ({ jobs, fetchJobs }) => {
     } catch (error) {
       console.error("Error deleting job:", error);
     }
+  };
+
+  // Toggle applicants visibility
+  const toggleApplicants = (jobId) => {
+    setShowApplicants(showApplicants === jobId ? null : jobId);
   };
 
   return (
@@ -216,7 +222,46 @@ const JobList = ({ jobs, fetchJobs }) => {
                     >
                       Delete
                     </button>
+                    <button
+                      className="bg-purple-500 text-white px-4 py-2 rounded"
+                      onClick={() => toggleApplicants(job._id)}
+                    >
+                      {showApplicants === job._id ? "Hide Applicants" : "View Applicants"}
+                    </button>
                   </div>
+
+                  {showApplicants === job._id && (
+                    <div className="mt-4">
+                      <h4 className="text-lg font-semibold">Applicants</h4>
+                      {job.applicants.length > 0 ? (
+                        <ul className="space-y-2">
+                          {job.applicants.map((applicant) => (
+                            <li key={applicant._id} className="border p-2 rounded">
+                              <p><strong>Name:</strong> {applicant.user.name}</p>
+                              <p><strong>Email:</strong> {applicant.user.email}</p>
+                              <p><strong>Status:</strong> {applicant.status}</p>
+                              <p>
+                                <strong>Resume:</strong>{" "}
+                                <a
+                                  href={applicant.resume}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 underline"
+                                >
+                                  View Resume
+                                </a>
+                              </p>
+                              <p>
+                                <strong>Cover Letter:</strong> {applicant.coverLetter}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-gray-600">No applicants yet.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </li>

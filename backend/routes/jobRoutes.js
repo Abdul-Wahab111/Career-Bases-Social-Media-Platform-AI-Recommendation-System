@@ -6,7 +6,9 @@ const {
   updateJob, 
   deleteJob, 
   applyForJob ,
-  checkApplicationStatus
+  checkApplicationStatus,
+  getJobApplicants,
+  updateApplicantStatus
 } = require("../controllers/jobController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -20,5 +22,7 @@ router.put("/:id", protect, updateJob); // Update job (only for logged-in users)
 router.delete("/:id", protect, deleteJob); // Delete job (only for logged-in users)
 router.post("/:id/apply", protect, applyForJob); // Apply for a job
 router.get("/:id/application-status", protect, checkApplicationStatus); // Check if user has applied to a job
+router.get("/:id/applicants", protect, getJobApplicants);
+router.patch("/:id/applicants/:applicantId", protect, updateApplicantStatus);
 
 module.exports = router;

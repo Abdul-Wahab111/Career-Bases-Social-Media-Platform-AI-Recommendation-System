@@ -22,9 +22,12 @@ const profileSchema = mongoose.Schema(
     interests: {
       type: [String], // Array of interests
     },
-    job: {
-      type: String, // Job title or position
-    },
+    job: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Job", // Reference to Job model
+      },
+    ],
     userimage: {
       type: String, // URL of the profile image
     },

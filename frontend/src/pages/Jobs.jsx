@@ -4,6 +4,7 @@ import { jwtDecode } from "jwt-decode";
 import Layout from "../components/Layout";
 import CreateJob from "../components/Jobs/CreateJob";
 import JobList from "../components/jobs/JobList";
+import ApplicantsList from "../components/Jobs/ApplicantsList";
 
 const Jobs = () => {
   const [jobs, setJobs] = useState([]);
@@ -87,6 +88,7 @@ const Jobs = () => {
           onEditJob={handleEditJob} 
           onDeleteJob={handleDeleteJob} 
         />
+        {/* <ApplicantsList jobs={jobs}/> */}
       </div>
     </Layout>
   );
