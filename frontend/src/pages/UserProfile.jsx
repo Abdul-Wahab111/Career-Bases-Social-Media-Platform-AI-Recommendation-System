@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
-import Layout from "../../components/Layout"
-import ProfileHeader from "./components/ProfileHeader"
-import ProfileTabs from "./components/ProfileTabs"
-import ProfileContent from "./components/ProfileContent"
-import LoadingState from "./components/LoadingState"
-import ErrorState from "./components/ErrorState"
-import NotFoundState from "./components/NotFoundState"
-import { useUserProfile } from "./hooks/useUserProfile"
+import Layout from "../components/Layout"
+import ProfileHeader from "../components/user-profiling/ProfileHeader"
+import ProfileTabs from "../components/user-profiling/ProfileTabs"
+import ProfileContent from "../components/user-profiling/ProfileContent"
+import LoadingState from "../components/user-profiling/LoadingState"
+import ErrorState from "../components/user-profiling/ErrorState"
+import NotFoundState from "../components/user-profiling/NotFoundState"
+import { useUserProfile } from "../hooks/useUserProfile"
 
 const UserProfile = () => {
   const { userId } = useParams()

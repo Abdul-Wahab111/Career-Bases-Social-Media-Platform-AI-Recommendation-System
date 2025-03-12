@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import Layout from "../components/Layout";
 import { UserPlus, UserMinus, Loader, AlertCircle, User } from 'lucide-react';
 
@@ -13,7 +14,8 @@ const ProfilesList = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const token = localStorage.getItem("token");
-  
+  const navigate = useNavigate(); // Initialize useNavigate
+
   // Create axios instance with auth header
   const api = axios.create({
     baseURL: "http://localhost:5000/api",
@@ -195,7 +197,8 @@ const ProfilesList = () => {
             filteredProfiles.map((profile) => (
               <div
                 key={profile._id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 dark:border-gray-700"
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 dark:border-gray-700 cursor-pointer"
+                onClick={() => navigate(`/profile/${profile.user._id}`)} // Add onClick handler
               >
                 <div className="p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
@@ -226,7 +229,10 @@ const ProfilesList = () => {
                           <div className="flex-shrink-0">
                             {isFollowing(profile.user._id) ? (
                               <button
-                                onClick={() => handleUnfollow(profile.user._id)}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent navigation when clicking the button
+                                  handleUnfollow(profile.user._id);
+                                }}
                                 disabled={actionInProgress}
                                 className={`flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-all text-sm font-medium ${
                                   actionInProgress ? 'opacity-50 cursor-not-allowed' : ''
@@ -237,7 +243,10 @@ const ProfilesList = () => {
                               </button>
                             ) : (
                               <button
-                                onClick={() => handleFollow(profile.user._id)}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent navigation when clicking the button
+                                  handleFollow(profile.user._id);
+                                }}
                                 disabled={actionInProgress}
                                 className={`flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all text-sm font-medium ${
                                   actionInProgress ? 'opacity-50 cursor-not-allowed' : ''

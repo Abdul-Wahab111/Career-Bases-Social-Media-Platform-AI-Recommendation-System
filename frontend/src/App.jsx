@@ -11,6 +11,8 @@ import ResetPassword from "./components/ResetPassword";
 import ProfilesList from "./pages/ProfilesList";
 import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
+import Jobs from "./pages/Jobs";
+import JobsList from "./pages/JobsList";
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -43,6 +45,22 @@ function App() {
           element={
             <ProtectedRoute>
               <Posts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/jobs"
+          element={
+            <ProtectedRoute>
+              <Jobs />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/applyjobs"
+          element={
+            <ProtectedRoute>
+              <JobsList />
             </ProtectedRoute>
           }
         />
@@ -80,9 +98,7 @@ function App() {
         />
         <Route
           path="/logout"
-          element={
-            isLoggedIn ? <Logout /> : <Navigate to="/login" replace />
-          }
+          element={isLoggedIn ? <Logout /> : <Navigate to="/login" replace />}
         />
 
         {/* Catch-all Route */}
