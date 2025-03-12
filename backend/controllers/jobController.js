@@ -154,7 +154,27 @@ const applyForJob = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+const checkApplicationStatus = async (req, res) => {
+  try {
+    console.log(`📌 Checking application status for job ID: ${req.params.id} and user ID: ${req.user._id}`);
+    const job = await Job.findById(req.params.id);
 
+    if (!job) {
+      console.log("❌ Job not found.");
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    const hasApplied = job.applicants.some(
+      applicant => applicant.user.toString() === req.user._id.toString()
+    );
+
+    console.log(`✅ Application status checked: ${hasApplied ? "Applied" : "Not applied"}`);
+    res.status(200).json({ hasApplied });
+  } catch (error) {
+    console.error("❌ Error checking application status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 module.exports = {
   createJob,
   getJobs,
@@ -162,4 +182,5 @@ module.exports = {
   updateJob,
   deleteJob,
   applyForJob,
+  checkApplicationStatus,
 };
