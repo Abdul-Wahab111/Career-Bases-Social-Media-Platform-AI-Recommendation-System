@@ -189,9 +189,9 @@ const JobList = ({ jobs, fetchJobs }) => {
             </svg>
             <p className="text-xl font-medium text-gray-700 mb-2">No jobs available</p>
             <p className="text-gray-500 mb-6">Start by creating your first job posting</p>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+            {/* <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
               Create New Job
-            </button>
+            </button> */}
           </div>
         ) : (
           <div className="grid gap-6">

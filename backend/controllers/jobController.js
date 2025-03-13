@@ -335,7 +335,25 @@ const updateAllProfilesWithJobs = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+const getJobsByUser = async (req, res) => {
+  try {
+    console.log(`📌 Fetching jobs posted by user ID: ${req.params.userId}`);
+    const { userId } = req.params;
+    const jobs = await Job.find({ postedBy: userId });
 
+    if (!jobs.length) {
+      console.log("❌ No jobs found for this user.");
+      // Return an empty array with 200 status instead of 404
+      return res.status(200).json([]);
+    }
+
+    console.log(`✅ Found ${jobs.length} jobs for user ID: ${userId}`);
+    res.status(200).json(jobs);
+  } catch (error) {
+    console.error("❌ Error fetching jobs by user:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 module.exports = {
   createJob,
   getJobs,
@@ -348,5 +366,6 @@ module.exports = {
   updateApplicantStatus,
   getJobSuggestionsForProfile,
   updateProfileJobs,
-  updateAllProfilesWithJobs
+  updateAllProfilesWithJobs,
+  getJobsByUser
 };

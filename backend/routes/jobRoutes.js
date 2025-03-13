@@ -11,7 +11,8 @@ const {
   updateApplicantStatus,
   getJobSuggestionsForProfile,
   updateProfileJobs,
-  updateAllProfilesWithJobs
+  updateAllProfilesWithJobs,
+  getJobsByUser,
 } = require("../controllers/jobController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -23,6 +24,7 @@ router.get("/", getJobs); // Get all jobs
 router.get("/:id", getJobById); // Get job by ID
 router.put("/:id", protect, updateJob); // Update job (only for logged-in users)
 router.delete("/:id", protect, deleteJob); // Delete job (only for logged-in users)
+router.get("/user/:userId", protect, getJobsByUser); // Get jobs posted by a specific user
 
 // Job application routes
 router.post("/:id/apply", protect, applyForJob); // Apply for a job

@@ -28,12 +28,26 @@ const Jobs = () => {
   const fetchJobs = async () => {
     try {
       const token = localStorage.getItem("token");
-      const { data } = await axios.get("http://localhost:5000/api/jobs", {
-        headers: { Authorization: `Bearer ${token}` },
+      const userResponse = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const userId = userResponse.data._id;
+      console.log(`📌 Fetching jobs posted by user ID: ${userId}`);
+      
+      // Fetch jobs posted by this user
+      const { data } = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/jobs/user/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       setJobs(data);
     } catch (error) {
-      console.error("Error fetching jobs:", error);
+      // Handle 404 specifically
+      if (error.response && error.response.status === 404) {
+        console.log("❌ No jobs found for this user.");
+        setJobs([]); // Set empty array when no jobs found
+      } else {
+        console.error("Error fetching jobs:", error);
+      }
     }
   };
 
@@ -49,15 +63,18 @@ const Jobs = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        `http://localhost:5000/api/jobs/${jobId}`,
+        `${import.meta.env.VITE_SERVER_URL}/api/jobs/${jobId}`,
         updatedJobData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      console.log("Match all jobs");
       await axios.put(
-        console.log("Match all jobs"),
-        `http://localhost:5000/api/jobs/match-all`,
+        `${import.meta.env.VITE_SERVER_URL}/api/jobs/match-all`,
+        {}, // Empty request body
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
       fetchJobs();
     } catch (error) {
       console.error("Error updating job:", error);
@@ -69,7 +86,7 @@ const Jobs = () => {
     if (!window.confirm("Are you sure you want to delete this job?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/jobs/${jobId}`, {
+      await axios.delete(`${import.meta.env.VITE_SERVER_URL}/api/jobs/${jobId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
