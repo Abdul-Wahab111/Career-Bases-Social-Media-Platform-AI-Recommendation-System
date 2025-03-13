@@ -9,7 +9,10 @@ import { toast } from "react-toastify";
 const JobsList = () => {
   // State management
   const [jobs, setJobs] = useState([]);
-  const [filteredJobs, setFilteredJobs] = useState([]);
+  const [recommendedJobs, setRecommendedJobs] = useState([]);
+  const [otherJobs, setOtherJobs] = useState([]);
+  const [filteredRecommendedJobs, setFilteredRecommendedJobs] = useState([]);
+  const [filteredOtherJobs, setFilteredOtherJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -35,74 +38,113 @@ const JobsList = () => {
     };
   }, []);
 
-  // Fetch jobs on component mount
+  // Fetch jobs and profile on component mount
   useEffect(() => {
-    const fetchJobs = async () => {
+    const fetchJobsAndProfile = async () => {
       try {
+        const token = localStorage.getItem("token");
         setLoading(true);
-        const response = await axios.get("http://localhost:5000/api/jobs", {
+        
+        // Fetch all jobs
+        const jobsResponse = await axios.get("http://localhost:5000/api/jobs", {
           headers: { Accept: "application/json" },
         });
-  
-        if (response.data && Array.isArray(response.data)) {
-          setJobs(response.data);
-          setFilteredJobs(response.data);
+        
+        // Fetch user profile
+        const profileResponse = await axios.get("http://localhost:5000/api/profiles/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        console.log("Jobs fetched:", jobsResponse.data);
+        console.log("Profile fetched:", profileResponse.data);
+        
+        if (jobsResponse.data && Array.isArray(jobsResponse.data)) {
+          const allJobs = jobsResponse.data;
+          setJobs(allJobs);
+          
+          // Get preferred job IDs from the profile
+          const preferredJobIds = profileResponse.data.job || [];
+          
+          // Filter recommended jobs based on profile's preferred jobs
+          const recommendedJobsList = allJobs.filter(job => 
+            preferredJobIds.includes(job._id)
+          );
+          
+          // Filter other jobs (excluding recommended ones)
+          const otherJobsList = allJobs.filter(job => 
+            !preferredJobIds.includes(job._id)
+          );
+          
+          setRecommendedJobs(recommendedJobsList);
+          setOtherJobs(otherJobsList);
+          setFilteredRecommendedJobs(recommendedJobsList);
+          setFilteredOtherJobs(otherJobsList);
         } else {
-          console.error("Unexpected API response:", response.data);
+          console.error("Unexpected API response:", jobsResponse.data);
           toast.error("Unexpected response from server.");
         }
       } catch (error) {
-        console.error("Error fetching jobs:", error.response?.data || error.message);
+        console.error("Error fetching data:", error.response?.data || error.message);
         toast.error("Failed to load jobs. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
   
-    fetchJobs();
+    fetchJobsAndProfile();
   }, []);
   
-  // Apply filters and search
+  // Apply filters and search to both job lists
   useEffect(() => {
-    let results = Array.isArray(jobs) ? jobs : [];
+    // Filter recommended jobs
+    let filteredRecommended = [...recommendedJobs];
+    let filteredOther = [...otherJobs];
 
     // Apply search term
     if (searchTerm) {
-      results = results.filter(
-        (job) =>
-          job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          job.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const searchFilter = (job) =>
+        job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.description.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      filteredRecommended = filteredRecommended.filter(searchFilter);
+      filteredOther = filteredOther.filter(searchFilter);
     }
 
     // Apply location filter
     if (filters.location) {
-      results = results.filter((job) =>
-        job.location.toLowerCase().includes(filters.location.toLowerCase())
-      );
+      const locationFilter = (job) =>
+        job.location.toLowerCase().includes(filters.location.toLowerCase());
+      
+      filteredRecommended = filteredRecommended.filter(locationFilter);
+      filteredOther = filteredOther.filter(locationFilter);
     }
 
     // Apply skills filter
     if (filters.skills.length > 0) {
-      results = results.filter((job) =>
+      const skillsFilter = (job) =>
         filters.skills.some((skill) =>
           job.skillsRequired.some((jobSkill) =>
             jobSkill.toLowerCase().includes(skill.toLowerCase())
           )
-        )
-      );
+        );
+      
+      filteredRecommended = filteredRecommended.filter(skillsFilter);
+      filteredOther = filteredOther.filter(skillsFilter);
     }
 
     // Apply salary filter
     if (filters.salary.min > 0 || filters.salary.max < 1000000) {
-      results = results.filter(
-        (job) => job.salary >= filters.salary.min && job.salary <= filters.salary.max
-      );
+      const salaryFilter = (job) => 
+        job.salary >= filters.salary.min && job.salary <= filters.salary.max;
+      
+      filteredRecommended = filteredRecommended.filter(salaryFilter);
+      filteredOther = filteredOther.filter(salaryFilter);
     }
 
-    setFilteredJobs(results);
-  }, [jobs, filters, searchTerm]);
+    setFilteredRecommendedJobs(filteredRecommended);
+    setFilteredOtherJobs(filteredOther);
+  }, [recommendedJobs, otherJobs, filters, searchTerm]);
 
   // Handle job selection
   const handleJobSelect = (job) => {
@@ -127,6 +169,9 @@ const JobsList = () => {
     setShowDetailsMobile(false);
   };
 
+  // Total job count
+  const totalFilteredJobs = filteredRecommendedJobs.length + filteredOtherJobs.length;
+
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Jobs Listing Section */}
@@ -140,7 +185,7 @@ const JobsList = () => {
               </span>
             </h1>
             <div className="text-sm text-gray-500">
-              {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'} found
+              {totalFilteredJobs} {totalFilteredJobs === 1 ? 'job' : 'jobs'} found
             </div>
           </div>
 
@@ -152,36 +197,71 @@ const JobsList = () => {
             </div>
           </div>
 
-          {/* Job Cards */}
-          <div className="space-y-4">
-            {loading ? (
-              <div className="flex flex-col justify-center items-center h-64 bg-white rounded-xl shadow-sm p-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
-                <p className="mt-4 text-gray-600">Loading opportunities...</p>
-              </div>
-            ) : Array.isArray(filteredJobs) && filteredJobs.length > 0 ? (
-              filteredJobs.map((job) => (
-                <JobCard
-                  key={job._id}
-                  job={job}
-                  isSelected={selectedJob && selectedJob._id === job._id}
-                  onClick={() => handleJobSelect(job)}
-                />
-              ))
-            ) : (
-              <div className="text-center p-8 bg-white rounded-xl shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-xl font-medium text-gray-700 mb-2">
-                  No matching jobs found
-                </p>
-                <p className="text-gray-500">
-                  Try adjusting your filters or search criteria
-                </p>
-              </div>
-            )}
-          </div>
+          {/* Loading State */}
+          {loading ? (
+            <div className="flex flex-col justify-center items-center h-64 bg-white rounded-xl shadow-sm p-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+              <p className="mt-4 text-gray-600">Loading opportunities...</p>
+            </div>
+          ) : (
+            <>
+              {/* AI Recommended Jobs Section */}
+              {filteredRecommendedJobs.length > 0 && (
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-indigo-600 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" />
+                    </svg>
+                    Personalized AI Recommended Jobs
+                  </h2>
+                  <div className="space-y-4">
+                    {filteredRecommendedJobs.map((job) => (
+                      <JobCard
+                        key={job._id}
+                        job={job}
+                        isSelected={selectedJob && selectedJob._id === job._id}
+                        onClick={() => handleJobSelect(job)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Other Jobs Section */}
+              {filteredOtherJobs.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-700 mb-4">
+                    All Available Opportunities
+                  </h2>
+                  <div className="space-y-4">
+                    {filteredOtherJobs.map((job) => (
+                      <JobCard
+                        key={job._id}
+                        job={job}
+                        isSelected={selectedJob && selectedJob._id === job._id}
+                        onClick={() => handleJobSelect(job)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No Jobs Found Message */}
+              {filteredRecommendedJobs.length === 0 && filteredOtherJobs.length === 0 && (
+                <div className="text-center p-8 bg-white rounded-xl shadow-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-xl font-medium text-gray-700 mb-2">
+                    No matching jobs found
+                  </p>
+                  <p className="text-gray-500">
+                    Try adjusting your filters or search criteria
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

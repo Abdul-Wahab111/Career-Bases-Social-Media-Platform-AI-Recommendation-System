@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const {
-  createProfile,
+  createOrUpdateProfile,
   viewOwnProfile,
   updateOwnProfile,
   deleteOwnProfile,
@@ -11,7 +11,7 @@ const {
 const { protect } = require("../middleware/authMiddleware");
 
 // Profile-related routes
-router.post("/", protect, createProfile); // Create profile
+router.post("/", protect, createOrUpdateProfile); // Create profile
 router.get("/me", protect, viewOwnProfile); // View own profile
 router.put("/me", protect, updateOwnProfile); // Update own profile
 router.delete("/me", protect, deleteOwnProfile); // Delete own profile

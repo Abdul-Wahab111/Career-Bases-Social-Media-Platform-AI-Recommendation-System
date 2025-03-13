@@ -1,50 +1,56 @@
 const asyncHandler = require("express-async-handler");
 const Profile = require("../models/profileModel");
 const User = require("../models/userModel");
+const jobService = require("../services/jobService");
 
 // @desc    Create user profile
 // @route   POST /api/profiles
 // @access  Private
-const createProfile = asyncHandler(async (req, res) => {
+const createOrUpdateProfile = async (req, res) => {
   try {
-    console.log("Creating profile with data:", req.body);
-    console.log("User ID:", req.user.id);
-    
-    const existingProfile = await Profile.findOne({ user: req.user.id });
+    console.log(`📌 Creating/updating profile for user: ${req.user._id}`);
+    const { bio, skills, education, courses, interests, achievements, userimage } = req.body;
 
-    if (existingProfile) {
-      res.status(400);
-      throw new Error("Profile already exists");
+    // Find existing profile
+    let profile = await Profile.findOne({ user: req.user._id });
+
+    if (profile) {
+      // Update existing profile
+      profile.bio = bio || profile.bio;
+      profile.skills = skills || profile.skills;
+      profile.education = education || profile.education;
+      profile.courses = courses || profile.courses;
+      profile.interests = interests || profile.interests;
+      profile.achievements = achievements || profile.achievements;
+      profile.userimage = userimage || profile.userimage;
+      
+      await profile.save();
+      console.log(`✅ Profile updated for user: ${req.user._id}`);
+    } else {
+      // Create new profile
+      profile = await Profile.create({
+        user: req.user._id,
+        bio,
+        skills,
+        education,
+        courses,
+        interests,
+        achievements,
+        userimage
+      });
+      console.log(`✅ Profile created for user: ${req.user._id}`);
     }
 
-    const { bio, skills, education, courses, interests, userimage, achievements } = req.body;
+    // Update profile with matching jobs
+    await jobService.updateProfileWithMatchingJobs(profile._id);
 
-    const profileData = {
-      user: req.user.id,
-      bio: bio || "",
-      skills: skills || [],
-      education: education || "",
-      courses: courses || [],
-      interests: interests || [],
-      userimage: userimage || "",
-      achievements: achievements || [],
-    };
-
-    console.log("Processed profile data:", profileData);
-    
-    const profile = await Profile.create(profileData);
-
-    // Update the user's image field with the same userimage
-    if (userimage) {
-      await User.findByIdAndUpdate(req.user.id, { userimage });
-    }
-    
-    res.status(201).json(profile);
+    res.status(200).json(profile);
   } catch (error) {
-    console.error("Profile creation error:", error);
-    res.status(500).json({ message: error.message });
+    console.error("❌ Error creating/updating profile:", error);
+    res.status(500).json({ message: "Server error" });
   }
-});
+};
+
 
 // @desc    View own profile
 // @route   GET /api/profiles/me
@@ -120,7 +126,7 @@ const viewAllProfiles = asyncHandler(async (req, res) => {
   }
 });
 module.exports = {
-  createProfile,
+  createOrUpdateProfile,
   viewOwnProfile,
   updateOwnProfile,
   deleteOwnProfile,

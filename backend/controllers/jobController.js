@@ -1,4 +1,6 @@
 const Job = require("../models/jobModel");
+const jobService = require("../services/jobService");
+const Profile = require("../models/profileModel");
 
 // ✅ Create a Job
 const createJob = async (req, res) => {
@@ -25,7 +27,17 @@ const createJob = async (req, res) => {
     });
 
     console.log("✅ Job created successfully:", job);
-    res.status(201).json(job);
+    
+    // Add job to embedding database
+    await jobService.addJobToEmbeddingDatabase(job);
+    
+    // Update matching profiles with this new job
+    const updateResult = await jobService.updateProfilesForNewJob(job._id);
+    
+    res.status(201).json({
+      job,
+      profilesUpdated: updateResult.updatedProfiles.length
+    });
   } catch (error) {
     console.error("❌ Error creating job:", error);
     res.status(500).json({ message: "Server error" });
@@ -37,7 +49,7 @@ const getJobs = async (req, res) => {
   try {
     console.log("📌 Fetching all jobs...");
     const jobs = await Job.find()
-      .populate("postedBy", "name email")
+      .populate("postedBy" ,"name email")
       .populate("applicants.user", "name userimage email");
 
     console.log(`✅ Found ${jobs.length} jobs`);
@@ -87,6 +99,13 @@ const updateJob = async (req, res) => {
 
     job = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true });
     console.log("✅ Job updated:", job);
+    
+    // Update job in embedding database
+    await jobService.addJobToEmbeddingDatabase(job);
+    
+    // Re-evaluate profiles to see if matching changed
+    await jobService.updateProfilesForNewJob(job._id);
+    
     res.status(200).json(job);
   } catch (error) {
     console.error("❌ Error updating job:", error);
@@ -109,6 +128,12 @@ const deleteJob = async (req, res) => {
       console.log("❌ Unauthorized to delete this job.");
       return res.status(403).json({ message: "Unauthorized" });
     }
+
+    // Remove job from profiles
+    await Profile.updateMany(
+      { job: job._id },
+      { $pull: { job: job._id } }
+    );
 
     await job.deleteOne();
     console.log("✅ Job deleted successfully.");
@@ -154,6 +179,8 @@ const applyForJob = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Check application status
 const checkApplicationStatus = async (req, res) => {
   try {
     console.log(`📌 Checking application status for job ID: ${req.params.id} and user ID: ${req.user._id}`);
@@ -176,6 +203,7 @@ const checkApplicationStatus = async (req, res) => {
   }
 };
 
+// Get job applicants
 const getJobApplicants = async (req, res) => {
   try {
     console.log(`📌 Fetching applicants for job ID: ${req.params.id}`);
@@ -202,7 +230,7 @@ const getJobApplicants = async (req, res) => {
   }
 };
 
-
+// Update applicant status
 const updateApplicantStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -226,6 +254,88 @@ const updateApplicantStatus = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Get job suggestions for a user profile
+const getJobSuggestionsForProfile = async (req, res) => {
+  try {
+    console.log(`📌 Getting job suggestions for profile ID: ${req.params.profileId}`);
+    const profileId = req.params.profileId;
+    
+    // Get user profile
+    const profile = await Profile.findById(profileId);
+    if (!profile) {
+      console.log("❌ Profile not found.");
+      return res.status(404).json({ message: "Profile not found" });
+    }
+    
+    // Format user data
+    const userData = {
+      Skills: profile.skills.join(", "),
+      Education: profile.education,
+      Courses: profile.courses.join(", "),
+      Interests: profile.interests.join(", ")
+    };
+    
+    // Get job suggestion
+    const suggestion = await jobService.getJobSuggestion(userData);
+    
+    console.log("✅ Job suggestions generated successfully");
+    res.status(200).json({
+      success: true,
+      suggestion
+    });
+  } catch (error) {
+    console.error("❌ Error getting job suggestions:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update profile with matching jobs
+const updateProfileJobs = async (req, res) => {
+  try {
+    console.log(`📌 Updating profile ID: ${req.params.profileId} with matching jobs`);
+    const profileId = req.params.profileId;
+    
+    const result = await jobService.updateProfileWithMatchingJobs(profileId);
+    
+    console.log(`✅ Profile updated with ${result.matchCount} matching jobs`);
+    res.status(200).json({
+      success: true,
+      matchCount: result.matchCount,
+      message: `Updated profile with ${result.matchCount} matching jobs`
+    });
+  } catch (error) {
+    console.error("❌ Error updating profile with matching jobs:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update all profiles with matching jobs (admin function)
+const updateAllProfilesWithJobs = async (req, res) => {
+  try {
+    console.log("📌 Updating all profiles with matching jobs");
+    const profiles = await Profile.find();
+    
+    const results = [];
+    for (const profile of profiles) {
+      const result = await jobService.updateProfileWithMatchingJobs(profile._id);
+      results.push({
+        profileId: profile._id,
+        matchCount: result.matchCount
+      });
+    }
+    
+    console.log(`✅ Updated ${profiles.length} profiles with matching jobs`);
+    res.status(200).json({
+      success: true,
+      results
+    });
+  } catch (error) {
+    console.error("❌ Error updating all profiles with matching jobs:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   createJob,
   getJobs,
@@ -236,4 +346,7 @@ module.exports = {
   checkApplicationStatus,
   getJobApplicants,
   updateApplicantStatus,
+  getJobSuggestionsForProfile,
+  updateProfileJobs,
+  updateAllProfilesWithJobs
 };

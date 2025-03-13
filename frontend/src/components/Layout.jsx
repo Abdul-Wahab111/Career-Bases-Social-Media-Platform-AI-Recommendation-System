@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react";
 import {
   Menu,
   X,
@@ -14,121 +14,129 @@ import {
   Moon,
   Sun,
   ChevronRight,
-} from "lucide-react"
-import axios from "axios"
+  Briefcase,
+} from "lucide-react";
+import axios from "axios";
 
 const Layout = ({ children }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [searchResults, setSearchResults] = useState([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [isDarkMode, setIsDarkMode] = useState(false)
-  const searchRef = useRef(null)
-  const searchInputRef = useRef(null)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const searchRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   // Check for dark mode preference
   useEffect(() => {
     if (typeof window !== "undefined") {
       const isDark =
-        localStorage.getItem("darkMode") === "true" || window.matchMedia("(prefers-color-scheme: dark)").matches
-      setIsDarkMode(isDark)
+        localStorage.getItem("darkMode") === "true" ||
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
+      setIsDarkMode(isDark);
       if (isDark) {
-        document.documentElement.classList.add("dark")
+        document.documentElement.classList.add("dark");
       }
     }
-  }, [])
+  }, []);
 
   // Toggle dark mode
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode)
+    setIsDarkMode(!isDarkMode);
     if (isDarkMode) {
-      document.documentElement.classList.remove("dark")
-      localStorage.setItem("darkMode", "false")
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("darkMode", "false");
     } else {
-      document.documentElement.classList.add("dark")
-      localStorage.setItem("darkMode", "true")
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("darkMode", "true");
     }
-  }
+  };
 
   // Close mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isMobileMenuOpen && !event.target.closest("nav")) {
-        setIsMobileMenuOpen(false)
+        setIsMobileMenuOpen(false);
       }
-    }
+    };
 
-    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [isMobileMenuOpen])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
 
   // Close search results when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setIsSearchOpen(false)
+        setIsSearchOpen(false);
       }
-    }
+    };
 
-    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Focus search input when search is opened
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
-      searchInputRef.current.focus()
+      searchInputRef.current.focus();
     }
-  }, [isSearchOpen])
+  }, [isSearchOpen]);
 
   // Handle search
   const handleSearch = async (term) => {
-    setSearchTerm(term)
+    setSearchTerm(term);
 
     if (!term.trim()) {
-      setSearchResults([])
-      return
+      setSearchResults([]);
+      return;
     }
 
     try {
-      setIsSearching(true)
-      const token = localStorage.getItem("token")
+      setIsSearching(true);
+      const token = localStorage.getItem("token");
 
       if (!token) {
-        console.error("No auth token found")
-        return
+        console.error("No auth token found");
+        return;
       }
 
       const response = await axios.get(`http://localhost:5000/api/users`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
+      });
 
-      setSearchResults(response.data || [])
+      setSearchResults(response.data || []);
     } catch (error) {
-      console.error("Error searching users:", error)
-      setSearchResults([])
+      console.error("Error searching users:", error);
+      setSearchResults([]);
     } finally {
-      setIsSearching(false)
+      setIsSearching(false);
     }
-  }
+  };
 
   // Debounce search input
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchTerm) {
-        handleSearch(searchTerm)
+        handleSearch(searchTerm);
       }
-    }, 300)
+    }, 300);
 
-    return () => clearTimeout(delayDebounceFn)
-  }, [searchTerm])
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
 
-  const NavLink = ({ href, icon: Icon, label, isMobile = false, onClick = null }) => (
+  const NavLink = ({
+    href,
+    icon: Icon,
+    label,
+    isMobile = false,
+    onClick = null,
+  }) => (
     <a
       href={href}
       onClick={onClick}
@@ -139,7 +147,7 @@ const Layout = ({ children }) => {
       <Icon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
       <span>{label}</span>
     </a>
-  )
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -160,7 +168,10 @@ const Layout = ({ children }) => {
             </div>
 
             {/* Search Bar - Desktop */}
-            <div className="hidden md:flex items-center flex-1 max-w-md mx-4 lg:mx-8 relative" ref={searchRef}>
+            <div
+              className="hidden md:flex items-center flex-1 max-w-md mx-4 lg:mx-8 relative"
+              ref={searchRef}
+            >
               <div className="relative w-full">
                 <input
                   ref={searchInputRef}
@@ -197,16 +208,25 @@ const Layout = ({ children }) => {
                             {user.name?.[0]?.toUpperCase() || "U"}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                            <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {user.name}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                              {user.email}
+                            </p>
                           </div>
-                          <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" />
+                          <ChevronRight
+                            size={16}
+                            className="text-gray-400 dark:text-gray-500"
+                          />
                         </a>
                       ))}
                     </div>
                   ) : (
                     <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-                      {searchTerm.length > 0 ? "No users found" : "Type to search users"}
+                      {searchTerm.length > 0
+                        ? "No users found"
+                        : "Type to search users"}
                     </div>
                   )}
                 </div>
@@ -217,6 +237,8 @@ const Layout = ({ children }) => {
             <div className="hidden md:flex md:items-center md:gap-1 lg:gap-2">
               <NavLink href="/" icon={Home} label="Home" />
               <NavLink href="/posts" icon={FileText} label="Posts" />
+              <NavLink href="/jobs" icon={Briefcase} label="Post Jobs" />
+              <NavLink href="/applyjobs" icon={Briefcase} label="Find Jobs" />
               <NavLink href="/profiles" icon={Users} label="People" />
               <NavLink href="/profile" icon={UserCircle} label="Profile" />
               <NavLink href="/chat" icon={MessageCircle} label="Chat" />
@@ -225,9 +247,15 @@ const Layout = ({ children }) => {
               <button
                 onClick={toggleDarkMode}
                 className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-1"
-                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={
+                  isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                }
               >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                {isDarkMode ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
               </button>
 
               {/* Logout Button */}
@@ -255,9 +283,15 @@ const Layout = ({ children }) => {
               <button
                 onClick={toggleDarkMode}
                 className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={
+                  isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                }
               >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                {isDarkMode ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
               </button>
 
               {/* Menu Toggle - Mobile */}
@@ -266,7 +300,11 @@ const Layout = ({ children }) => {
                 className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
               >
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {isMobileMenuOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
               </button>
             </div>
           </div>
@@ -275,7 +313,9 @@ const Layout = ({ children }) => {
         {/* Mobile Search Bar */}
         <div
           className={`md:hidden transition-all duration-300 overflow-hidden ${
-            isSearchOpen ? "max-h-16 opacity-100 border-b border-gray-200 dark:border-gray-700" : "max-h-0 opacity-0"
+            isSearchOpen
+              ? "max-h-16 opacity-100 border-b border-gray-200 dark:border-gray-700"
+              : "max-h-0 opacity-0"
           }`}
         >
           <div className="px-4 py-2" ref={searchRef}>
@@ -312,16 +352,25 @@ const Layout = ({ children }) => {
                           {user.name?.[0]?.toUpperCase() || "U"}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {user.name}
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                            {user.email}
+                          </p>
                         </div>
-                        <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" />
+                        <ChevronRight
+                          size={16}
+                          className="text-gray-400 dark:text-gray-500"
+                        />
                       </a>
                     ))}
                   </div>
                 ) : (
                   <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-                    {searchTerm.length > 0 ? "No users found" : "Type to search users"}
+                    {searchTerm.length > 0
+                      ? "No users found"
+                      : "Type to search users"}
                   </div>
                 )}
               </div>
@@ -336,11 +385,31 @@ const Layout = ({ children }) => {
           }`}
         >
           <div className="space-y-1 px-4 py-2">
-            <NavLink href="/" icon={Home} label="Home" isMobile={true} onClick={() => setIsMobileMenuOpen(false)} />
+            <NavLink
+              href="/"
+              icon={Home}
+              label="Home"
+              isMobile={true}
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
             <NavLink
               href="/posts"
               icon={FileText}
               label="Posts"
+              isMobile={true}
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            <NavLink
+              href="/jobs"
+              icon={Briefcase}
+              label="Post Jobs"
+              isMobile={true}
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            <NavLink
+              href="/applyjobs"
+              icon={Briefcase}
+              label="Find Jobs"
               isMobile={true}
               onClick={() => setIsMobileMenuOpen(false)}
             />
@@ -378,14 +447,18 @@ const Layout = ({ children }) => {
 
       {/* Main Content */}
       <main className="pt-16 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {children}
+        </div>
       </main>
 
       {/* Footer */}
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-gray-600 dark:text-gray-400">© 2024 Social Platform. All rights reserved.</div>
+            <div className="text-gray-600 dark:text-gray-400">
+              © 2024 Social Platform. All rights reserved.
+            </div>
             <div className="flex gap-6">
               <a
                 href="/terms"
@@ -410,8 +483,7 @@ const Layout = ({ children }) => {
         </div>
       </footer>
     </div>
-  )
-}
+  );
+};
 
-export default Layout
-
+export default Layout;

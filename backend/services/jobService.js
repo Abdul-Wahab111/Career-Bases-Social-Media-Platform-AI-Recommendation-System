@@ -2,6 +2,8 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
+const Job = require("../models/jobModel");
+const Profile = require("../models/profileModel");
 
 class JobService {
   constructor() {
@@ -182,6 +184,178 @@ class JobService {
       return result.response.text();
     } catch (error) {
       console.error('Error generating AI suggestion:', error);
+      throw error;
+    }
+  }
+
+  // Method to update a user's profile with matching jobs
+  async updateProfileWithMatchingJobs(profileId) {
+    try {
+      console.log(`📌 Updating profile ${profileId} with matching jobs...`);
+      // Get the profile
+      const profile = await Profile.findById(profileId);
+      if (!profile) {
+        throw new Error("Profile not found");
+      }
+
+      // Format user data for matching
+      const userData = {
+        Skills: profile.skills.join(", "),
+        Education: profile.education,
+        Courses: profile.courses.join(", "),
+        Interests: profile.interests.join(", ")
+      };
+
+      // Find matching jobs
+      const matchingJobs = await this.findMatchingJobs(userData);
+      
+      // Extract job IDs
+      const jobIds = matchingJobs.map(job => job._id);
+      
+      console.log(`📊 Found ${jobIds.length} matching jobs for profile ${profileId}`);
+      
+      // Update profile with matching job IDs
+      profile.job = jobIds;
+      await profile.save();
+      
+      console.log(`✅ Updated profile ${profileId} with matching jobs`);
+      return { success: true, matchCount: jobIds.length };
+    } catch (error) {
+      console.error("❌ Error updating profile with matching jobs:", error);
+      throw error;
+    }
+  }
+
+  // Find matching jobs based on user data
+  async findMatchingJobs(userData) {
+    console.log(`📌 Finding matching jobs for user...`);
+    // Ensure data is loaded
+    if (!this.isDataLoaded) {
+      await this.initializeJobData();
+    }
+
+    // Generate embedding for user data
+    const model = this.genAI.getGenerativeModel({ model: "embedding-001" });
+    const userText = this.formatJobText(userData);
+    const { embedding: userEmbedding } = await model.embedContent(userText);
+
+    // Calculate job similarities
+    const jobsWithSimilarity = this.jobs
+      .map(job => ({
+        ...job,
+        similarity: this.cosineSimilarity(userEmbedding.values, job.embedding || [])
+      }))
+      .filter(job => job.similarity > 0.7) // Only consider jobs with high similarity
+      .sort((a, b) => b.similarity - a.similarity);
+
+    console.log(`📊 Found ${jobsWithSimilarity.length} jobs with similarity > 0.7`);
+    
+    // Get actual job documents from database
+    const jobTitles = jobsWithSimilarity.map(job => job.Job);
+    const matchingJobs = await Job.find({ title: { $in: jobTitles } });
+    
+    console.log(`📊 Found ${matchingJobs.length} matching jobs in database`);
+    return matchingJobs;
+  }
+
+  // Update all profiles when a new job is added
+  async updateProfilesForNewJob(jobId) {
+    try {
+      console.log(`📌 Updating profiles for new job ${jobId}...`);
+      // Get the job
+      const job = await Job.findById(jobId);
+      if (!job) {
+        throw new Error("Job not found");
+      }
+
+      // Create job data for matching
+      const jobData = {
+        Job: job.title,
+        Skills: job.skillsRequired.join(", "),
+        Education: job.educationRequired.map(edu => `${edu.degree} in ${edu.field}`).join(", "),
+        Courses: job.coursesPreferred.map(course => course.courseName).join(", "),
+        Interests: job.interests.join(", ")
+      };
+
+      // Generate embedding for job
+      const model = this.genAI.getGenerativeModel({ model: "embedding-001" });
+      const jobText = this.formatJobText(jobData);
+      const { embedding: jobEmbedding } = await model.embedContent(jobText);
+
+      // Find all profiles
+      const profiles = await Profile.find();
+      console.log(`📊 Processing ${profiles.length} profiles for job matching`);
+      
+      const updatedProfiles = [];
+
+      // For each profile, check if the job is a match
+      for (const profile of profiles) {
+        // Format profile data
+        const profileData = {
+          Skills: profile.skills.join(", "),
+          Education: profile.education,
+          Courses: profile.courses.join(", "),
+          Interests: profile.interests.join(", ")
+        };
+
+        // Generate embedding for profile
+        const profileText = this.formatJobText(profileData);
+        const { embedding: profileEmbedding } = await model.embedContent(profileText);
+
+        // Calculate similarity
+        const similarity = this.cosineSimilarity(jobEmbedding.values, profileEmbedding.values);
+
+        // If similarity is above threshold, add job to profile
+        if (similarity > 0.7) {
+          console.log(`📊 Found match with similarity ${similarity.toFixed(2)} for profile ${profile._id}`);
+          // Only add if not already in the list
+          if (!profile.job.includes(jobId)) {
+            profile.job.push(jobId);
+            await profile.save();
+            updatedProfiles.push(profile._id);
+          }
+        }
+      }
+
+      console.log(`✅ Updated ${updatedProfiles.length} profiles with new job ${jobId}`);
+      return { success: true, updatedProfiles };
+    } catch (error) {
+      console.error("❌ Error updating profiles for new job:", error);
+      throw error;
+    }
+  }
+
+  // Add a new job to the embedding database
+  async addJobToEmbeddingDatabase(job) {
+    try {
+      console.log(`📌 Adding job ${job._id} to embedding database...`);
+      // Format job data for embedding
+      const jobData = {
+        Job: job.title,
+        Skills: job.skillsRequired.join(", "),
+        Education: job.educationRequired.map(edu => `${edu.degree} in ${edu.field}`).join(", "),
+        Courses: job.coursesPreferred.map(course => course.courseName).join(", "),
+        Interests: job.interests.join(", ")
+      };
+
+      // Generate embedding
+      const model = this.genAI.getGenerativeModel({ model: "embedding-001" });
+      const jobText = this.formatJobText(jobData);
+      const { embedding } = await model.embedContent(jobText);
+
+      // Add to jobs array with embedding
+      const jobWithEmbedding = {
+        ...jobData,
+        _id: job._id,
+        embedding: embedding.values
+      };
+
+      this.jobs.push(jobWithEmbedding);
+      console.log(`✅ Added job ${job._id} to embedding database`);
+
+      return { success: true };
+    } catch (error) {
+      console.error("❌ Error adding job to embedding database:", error);
       throw error;
     }
   }
