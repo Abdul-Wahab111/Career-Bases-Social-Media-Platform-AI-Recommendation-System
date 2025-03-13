@@ -4,10 +4,10 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { io } from "socket.io-client"
 import axios from "axios"
 import PropTypes from "prop-types"
-import { Send, ImageIcon, Smile, Paperclip, MoreVertical, Phone, Video, Info, Mic, X } from "lucide-react"
+import { Send, Smile, Paperclip, MoreVertical } from "lucide-react"
 import moment from "moment"
 
-const Chat = ({ selectedUserId, currentUserId }) => {
+const Chat = ({ selectedUserId, currentUserId, onNewMessage }) => {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState("")
   const [socket, setSocket] = useState(null)
@@ -17,9 +17,9 @@ const Chat = ({ selectedUserId, currentUserId }) => {
   const [selectedUserInfo, setSelectedUserInfo] = useState(null)
   const [userStatus, setUserStatus] = useState({})
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
   const [attachmentPreview, setAttachmentPreview] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [unreadMessages, setUnreadMessages] = useState([])
   const messagesEndRef = useRef(null)
   const typingTimeoutRef = useRef(null)
   const socketRef = useRef(null)
@@ -64,6 +64,22 @@ const Chat = ({ selectedUserId, currentUserId }) => {
       // Handle incoming messages
       newSocket.on("newMessage", (message) => {
         setMessages((prevMessages) => [...prevMessages, message])
+
+        // If the message is from the selected user, mark it as read
+        // Otherwise, add it to unread messages and notify parent component
+        if (message.sender._id !== currentUserId) {
+          if (message.sender._id === selectedUserId) {
+            // Mark as read immediately since we're in this conversation
+            markMessageAsRead(message._id)
+          } else {
+            // Add to unread messages and notify parent
+            setUnreadMessages((prev) => [...prev, message._id])
+            if (onNewMessage) {
+              onNewMessage(message.sender._id)
+            }
+          }
+        }
+
         scrollToBottom()
       })
 
@@ -100,7 +116,7 @@ const Chat = ({ selectedUserId, currentUserId }) => {
         socketRef.current = null
       }
     }
-  }, [currentUserId, selectedUserId])
+  }, [currentUserId, selectedUserId, onNewMessage])
 
   // Auto-reconnect logic
   useEffect(() => {
@@ -157,6 +173,16 @@ const Chat = ({ selectedUserId, currentUserId }) => {
           headers: { Authorization: `Bearer ${token}` },
         })
         setMessages(response.data)
+
+        // Mark all unread messages from this user as read
+        const unreadIds = response.data
+          .filter((msg) => msg.sender._id === selectedUserId && !msg.read)
+          .map((msg) => msg._id)
+
+        if (unreadIds.length > 0) {
+          markMessagesAsRead(unreadIds)
+        }
+
         setTimeout(() => {
           scrollToBottom()
         }, 100)
@@ -170,6 +196,36 @@ const Chat = ({ selectedUserId, currentUserId }) => {
 
     fetchMessages()
   }, [selectedUserId, currentUserId])
+
+  // Mark a single message as read
+  const markMessageAsRead = async (messageId) => {
+    try {
+      const token = localStorage.getItem("token")
+      // In a real app, you would have an API endpoint to mark messages as read
+      console.log(`Marking message ${messageId} as read`)
+
+      // Update local state to mark message as read
+      setMessages((prevMessages) => prevMessages.map((msg) => (msg._id === messageId ? { ...msg, read: true } : msg)))
+    } catch (error) {
+      console.error("Error marking message as read:", error)
+    }
+  }
+
+  // Mark multiple messages as read
+  const markMessagesAsRead = async (messageIds) => {
+    try {
+      const token = localStorage.getItem("token")
+      // In a real app, you would have an API endpoint to mark messages as read
+      console.log(`Marking messages as read: ${messageIds.join(", ")}`)
+
+      // Update local state to mark messages as read
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) => (messageIds.includes(msg._id) ? { ...msg, read: true } : msg)),
+      )
+    } catch (error) {
+      console.error("Error marking messages as read:", error)
+    }
+  }
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -267,11 +323,6 @@ const Chat = ({ selectedUserId, currentUserId }) => {
     }
   }
 
-  const toggleRecording = () => {
-    // In a real app, you would implement actual audio recording
-    setIsRecording(!isRecording)
-  }
-
   // Group messages by date
   const groupedMessages = messages.reduce((groups, message) => {
     const date = moment(message.timestamp).format("YYYY-MM-DD")
@@ -292,6 +343,9 @@ const Chat = ({ selectedUserId, currentUserId }) => {
       .toUpperCase()
   }
 
+  // Count unread messages from the selected user
+  const unreadCount = messages.filter((msg) => msg.sender._id === selectedUserId && !msg.read).length
+
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* Chat Header */}
@@ -306,21 +360,21 @@ const Chat = ({ selectedUserId, currentUserId }) => {
             ></div>
           </div>
           <div>
-            <h2 className="text-lg font-semibold">{selectedUserInfo?.name || "Loading..."}</h2>
+            <div className="flex items-center">
+              <h2 className="text-lg font-semibold">{selectedUserInfo?.name || "Loading..."}</h2>
+
+              {/* Unread message badge */}
+              {unreadCount > 0 && (
+                <span className="ml-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                  {unreadCount} new
+                </span>
+              )}
+            </div>
             <p className={`text-xs ${isTyping ? "text-green-500 font-medium" : "text-gray-500"}`}>{getUserStatus()}</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-            <Phone size={18} />
-          </button>
-          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-            <Video size={18} />
-          </button>
-          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-            <Info size={18} />
-          </button>
+        <div className="flex items-center">
           <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
             <MoreVertical size={18} />
           </button>
@@ -328,7 +382,7 @@ const Chat = ({ selectedUserId, currentUserId }) => {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('/img/chat-bg-pattern.png')] bg-repeat bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
         {isLoading ? (
           <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
@@ -373,6 +427,7 @@ const Chat = ({ selectedUserId, currentUserId }) => {
                 const isLastMessageOfGroup =
                   index === dateMessages.length - 1 || dateMessages[index + 1].sender._id !== message.sender._id
                 const isSentByCurrentUser = message.sender._id === currentUserId
+                const isUnread = !message.read && message.sender._id !== currentUserId
 
                 return (
                   <div key={message._id} className={`flex ${isSentByCurrentUser ? "justify-end" : "justify-start"}`}>
@@ -385,7 +440,11 @@ const Chat = ({ selectedUserId, currentUserId }) => {
                     <div className={`max-w-[75%] ${isFirstMessageOfGroup ? "mt-2" : "mt-1"}`}>
                       <div
                         className={`p-3 rounded-2xl ${
-                          isSentByCurrentUser ? "bg-blue-500 text-white" : "bg-white shadow-sm"
+                          isSentByCurrentUser
+                            ? "bg-blue-500 text-white"
+                            : isUnread
+                              ? "bg-white shadow-sm border-l-4 border-blue-500"
+                              : "bg-white shadow-sm"
                         } ${!isFirstMessageOfGroup && isSentByCurrentUser ? "rounded-tr-sm" : ""} ${
                           !isFirstMessageOfGroup && !isSentByCurrentUser ? "rounded-tl-sm" : ""
                         } ${isSentByCurrentUser ? "rounded-br-sm" : "rounded-bl-sm"}`}
@@ -399,7 +458,9 @@ const Chat = ({ selectedUserId, currentUserId }) => {
                           <p className="text-xs text-gray-500">
                             {formatTime(message.timestamp)}
                             {isSentByCurrentUser && (
-                              <span className="ml-1 text-blue-500">{message.read ? "Read" : "Sent"}</span>
+                              <span className={`ml-1 ${message.read ? "text-blue-500" : "text-gray-400"}`}>
+                                {message.read ? "Read" : "Sent"}
+                              </span>
                             )}
                           </p>
                         </div>
@@ -451,7 +512,15 @@ const Chat = ({ selectedUserId, currentUserId }) => {
               </div>
             </div>
             <button onClick={removeAttachment} className="p-1 hover:bg-gray-100 rounded-full">
-              <X size={16} className="text-gray-500" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-gray-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         </div>
@@ -497,9 +566,6 @@ const Chat = ({ selectedUserId, currentUserId }) => {
               className="hidden"
               accept="image/*,.pdf,.doc,.docx"
             />
-            <button type="button" className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
-              <ImageIcon size={20} />
-            </button>
           </div>
 
           <div className="relative flex-1">
@@ -514,31 +580,15 @@ const Chat = ({ selectedUserId, currentUserId }) => {
               className="w-full p-3 pr-10 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
               disabled={!isConnected}
             />
-            {isRecording && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-1"></div>
-                <span className="text-xs text-red-500">Recording...</span>
-              </div>
-            )}
           </div>
 
-          {newMessage.trim() || attachmentPreview ? (
-            <button
-              type="submit"
-              disabled={(!newMessage.trim() && !attachmentPreview) || !isConnected}
-              className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            >
-              <Send size={20} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={toggleRecording}
-              className={`p-3 ${isRecording ? "bg-red-500" : "bg-blue-500"} text-white rounded-full hover:bg-blue-600 transition-colors shadow-sm`}
-            >
-              <Mic size={20} />
-            </button>
-          )}
+          <button
+            type="submit"
+            disabled={(!newMessage.trim() && !attachmentPreview) || !isConnected}
+            className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          >
+            <Send size={20} />
+          </button>
         </form>
       </div>
     </div>
@@ -548,6 +598,7 @@ const Chat = ({ selectedUserId, currentUserId }) => {
 Chat.propTypes = {
   selectedUserId: PropTypes.string.isRequired,
   currentUserId: PropTypes.string.isRequired,
+  onNewMessage: PropTypes.func,
 }
 
 export default Chat
