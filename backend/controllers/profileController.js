@@ -42,7 +42,7 @@ const createOrUpdateProfile = async (req, res) => {
     }
 
     // Update profile with matching jobs
-    await jobService.updateProfileWithMatchingJobs(profile._id);
+    await profileService.updateProfileWithMatchingJobs(profile._id);
 
     res.status(200).json(profile);
   } catch (error) {

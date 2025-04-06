@@ -145,11 +145,11 @@ const CreateJob = ({ fetchJobs }) => {
         { headers: { Authorization: `Bearer ${token}` } }
         
       )
-      await axios.put(
-        console.log("Match all jobs"),
-        `http://localhost:5000/api/jobs/match-all`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // await axios.put(
+      //   console.log("Match all jobs"),
+      //   `http://localhost:5000/api/jobs/match-all`,
+      //   { headers: { Authorization: `Bearer ${token}` } }
+      // );
 
       setSuccess(true)
       toast({

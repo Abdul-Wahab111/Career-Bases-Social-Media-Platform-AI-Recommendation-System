@@ -7,6 +7,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const EventEmitter = require('events');
+const { initializeVectorDB } = require('./utils/vectorDBInit');
 
 dotenv.config();
 connectDB();
@@ -158,7 +159,9 @@ app.get('/api/jobs/progress', (req, res) => {
 
 
 
-
+(async () => {
+  await initializeVectorDB();
+})();
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {

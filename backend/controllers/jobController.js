@@ -3,14 +3,27 @@ const jobService = require("../services/jobService");
 const Profile = require("../models/profileModel");
 
 // ✅ Create a Job
+
 const createJob = async (req, res) => {
   try {
     console.log("📌 Creating a new job...");
-    const { title, description, company, location, salary, skillsRequired, educationRequired, coursesPreferred, interests } = req.body;
+    const {
+      title,
+      description,
+      company,
+      location,
+      salary,
+      skillsRequired,
+      educationRequired,
+      coursesPreferred,
+      interests,
+    } = req.body;
 
     if (!title || !description || !company || !location) {
       console.log("❌ Missing required fields.");
-      return res.status(400).json({ message: "All required fields must be provided." });
+      return res
+        .status(400)
+        .json({ message: "All required fields must be provided." });
     }
 
     const job = await Job.create({
@@ -27,16 +40,16 @@ const createJob = async (req, res) => {
     });
 
     console.log("✅ Job created successfully:", job);
-    
+
     // Add job to embedding database
     await jobService.addJobToEmbeddingDatabase(job);
-    
+
     // Update matching profiles with this new job
     const updateResult = await jobService.updateProfilesForNewJob(job._id);
-    
+
     res.status(201).json({
       job,
-      profilesUpdated: updateResult.updatedProfiles.length
+      profilesUpdated: updateResult.updatedProfiles?.length || 0,
     });
   } catch (error) {
     console.error("❌ Error creating job:", error);
@@ -49,7 +62,7 @@ const getJobs = async (req, res) => {
   try {
     console.log("📌 Fetching all jobs...");
     const jobs = await Job.find()
-      .populate("postedBy" ,"name email")
+      .populate("postedBy", "name email")
       .populate("applicants.user", "name userimage email");
 
     console.log(`✅ Found ${jobs.length} jobs`);
@@ -99,14 +112,19 @@ const updateJob = async (req, res) => {
 
     job = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true });
     console.log("✅ Job updated:", job);
-    
+
     // Update job in embedding database
-    await jobService.addJobToEmbeddingDatabase(job);
-    
-    // Re-evaluate profiles to see if matching changed
-    await jobService.updateProfilesForNewJob(job._id);
-    
-    res.status(200).json(job);
+
+    // // Add job to embedding database
+    // await jobService.addJobToEmbeddingDatabase(job);
+
+    // Update matching profiles with this new job
+    const updateResult = await jobService.updateProfilesForJobUpdate(job._id);
+
+    res.status(201).json({
+      job,
+      profilesUpdated: updateResult.updatedProfiles?.length || 0,
+    });
   } catch (error) {
     console.error("❌ Error updating job:", error);
     res.status(500).json({ message: "Server error" });
@@ -130,10 +148,7 @@ const deleteJob = async (req, res) => {
     }
 
     // Remove job from profiles
-    await Profile.updateMany(
-      { job: job._id },
-      { $pull: { job: job._id } }
-    );
+    await Profile.updateMany({ job: job._id }, { $pull: { job: job._id } });
 
     await job.deleteOne();
     console.log("✅ Job deleted successfully.");
@@ -156,11 +171,15 @@ const applyForJob = async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    const alreadyApplied = job.applicants.find(applicant => applicant.user.toString() === req.user._id.toString());
+    const alreadyApplied = job.applicants.find(
+      (applicant) => applicant.user.toString() === req.user._id.toString()
+    );
 
     if (alreadyApplied) {
       console.log("❌ User has already applied.");
-      return res.status(400).json({ message: "You have already applied for this job." });
+      return res
+        .status(400)
+        .json({ message: "You have already applied for this job." });
     }
 
     job.applicants.push({
@@ -183,7 +202,9 @@ const applyForJob = async (req, res) => {
 // Check application status
 const checkApplicationStatus = async (req, res) => {
   try {
-    console.log(`📌 Checking application status for job ID: ${req.params.id} and user ID: ${req.user._id}`);
+    console.log(
+      `📌 Checking application status for job ID: ${req.params.id} and user ID: ${req.user._id}`
+    );
     const job = await Job.findById(req.params.id);
 
     if (!job) {
@@ -192,10 +213,12 @@ const checkApplicationStatus = async (req, res) => {
     }
 
     const hasApplied = job.applicants.some(
-      applicant => applicant.user.toString() === req.user._id.toString()
+      (applicant) => applicant.user.toString() === req.user._id.toString()
     );
 
-    console.log(`✅ Application status checked: ${hasApplied ? "Applied" : "Not applied"}`);
+    console.log(
+      `✅ Application status checked: ${hasApplied ? "Applied" : "Not applied"}`
+    );
     res.status(200).json({ hasApplied });
   } catch (error) {
     console.error("❌ Error checking application status:", error);
@@ -258,31 +281,33 @@ const updateApplicantStatus = async (req, res) => {
 // Get job suggestions for a user profile
 const getJobSuggestionsForProfile = async (req, res) => {
   try {
-    console.log(`📌 Getting job suggestions for profile ID: ${req.params.profileId}`);
+    console.log(
+      `📌 Getting job suggestions for profile ID: ${req.params.profileId}`
+    );
     const profileId = req.params.profileId;
-    
+
     // Get user profile
     const profile = await Profile.findById(profileId);
     if (!profile) {
       console.log("❌ Profile not found.");
       return res.status(404).json({ message: "Profile not found" });
     }
-    
+
     // Format user data
     const userData = {
       Skills: profile.skills.join(", "),
       Education: profile.education,
       Courses: profile.courses.join(", "),
-      Interests: profile.interests.join(", ")
+      Interests: profile.interests.join(", "),
     };
-    
+
     // Get job suggestion
     const suggestion = await jobService.getJobSuggestion(userData);
-    
+
     console.log("✅ Job suggestions generated successfully");
     res.status(200).json({
       success: true,
-      suggestion
+      suggestion,
     });
   } catch (error) {
     console.error("❌ Error getting job suggestions:", error);
@@ -293,16 +318,18 @@ const getJobSuggestionsForProfile = async (req, res) => {
 // Update profile with matching jobs
 const updateProfileJobs = async (req, res) => {
   try {
-    console.log(`📌 Updating profile ID: ${req.params.profileId} with matching jobs`);
+    console.log(
+      `📌 Updating profile ID: ${req.params.profileId} with matching jobs`
+    );
     const profileId = req.params.profileId;
-    
+
     const result = await jobService.updateProfileWithMatchingJobs(profileId);
-    
+
     console.log(`✅ Profile updated with ${result.matchCount} matching jobs`);
     res.status(200).json({
       success: true,
       matchCount: result.matchCount,
-      message: `Updated profile with ${result.matchCount} matching jobs`
+      message: `Updated profile with ${result.matchCount} matching jobs`,
     });
   } catch (error) {
     console.error("❌ Error updating profile with matching jobs:", error);
@@ -315,20 +342,22 @@ const updateAllProfilesWithJobs = async (req, res) => {
   try {
     console.log("📌 Updating all profiles with matching jobs");
     const profiles = await Profile.find();
-    
+
     const results = [];
     for (const profile of profiles) {
-      const result = await jobService.updateProfileWithMatchingJobs(profile._id);
+      const result = await jobService.updateProfileWithMatchingJobs(
+        profile._id
+      );
       results.push({
         profileId: profile._id,
-        matchCount: result.matchCount
+        matchCount: result.matchCount,
       });
     }
-    
+
     console.log(`✅ Updated ${profiles.length} profiles with matching jobs`);
     res.status(200).json({
       success: true,
-      results
+      results,
     });
   } catch (error) {
     console.error("❌ Error updating all profiles with matching jobs:", error);
@@ -367,5 +396,5 @@ module.exports = {
   getJobSuggestionsForProfile,
   updateProfileJobs,
   updateAllProfilesWithJobs,
-  getJobsByUser
+  getJobsByUser,
 };
