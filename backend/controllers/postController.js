@@ -245,7 +245,23 @@ const deleteComment = asyncHandler(async (req, res) => {
     comments: populatedPost.comments,
   });
 });
+const getPostsByUserId = async (req, res) => {
+  try {
+    const posts = await Post.find({ user: req.params.userId })
+      .populate("user", "-password")
+      .populate("Profile")
+      .sort({ createdAt: -1 });
 
+    if (!posts || posts.length === 0) {
+      return res.status(404).json({ message: "No posts found for this user." });
+    }
+
+    res.status(200).json(posts);
+  } catch (error) {
+    console.error("Error fetching posts by user ID:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 module.exports = {
   createPost,
   getAllPosts,
@@ -255,4 +271,5 @@ module.exports = {
   likePost,
   addComment,
   deleteComment,
+  getPostsByUserId, // ✅ Export the new function
 };

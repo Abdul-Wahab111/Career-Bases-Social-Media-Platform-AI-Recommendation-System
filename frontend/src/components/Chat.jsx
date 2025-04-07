@@ -409,68 +409,73 @@ const Chat = ({ selectedUserId, currentUserId, onNewMessage }) => {
             <p className="text-gray-500 text-sm mt-1">Start the conversation by sending a message</p>
           </div>
         ) : (
-          Object.entries(groupedMessages).map(([date, dateMessages]) => (
-            <div key={date} className="space-y-2">
-              <div className="flex justify-center">
-                <div className="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full">
-                  {moment(date).calendar(null, {
-                    sameDay: "[Today]",
-                    lastDay: "[Yesterday]",
-                    lastWeek: "dddd",
-                    sameElse: "MMMM D, YYYY",
-                  })}
+          Object.entries(groupedMessages)
+            .sort((a, b) => {
+              // Sort dates in ascending order (oldest first, newest last)
+              return new Date(a[0]).getTime() - new Date(b[0]).getTime()
+            })
+            .map(([date, dateMessages]) => (
+              <div key={date} className="space-y-2">
+                <div className="flex justify-center">
+                  <div className="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full">
+                    {moment(date).calendar(null, {
+                      sameDay: "[Today]",
+                      lastDay: "[Yesterday]",
+                      lastWeek: "dddd",
+                      sameElse: "MMMM D, YYYY",
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {dateMessages.map((message, index) => {
-                const isFirstMessageOfGroup = index === 0 || dateMessages[index - 1].sender._id !== message.sender._id
-                const isLastMessageOfGroup =
-                  index === dateMessages.length - 1 || dateMessages[index + 1].sender._id !== message.sender._id
-                const isSentByCurrentUser = message.sender._id === currentUserId
-                const isUnread = !message.read && message.sender._id !== currentUserId
+                {dateMessages.map((message, index) => {
+                  const isFirstMessageOfGroup = index === 0 || dateMessages[index - 1].sender._id !== message.sender._id
+                  const isLastMessageOfGroup =
+                    index === dateMessages.length - 1 || dateMessages[index + 1].sender._id !== message.sender._id
+                  const isSentByCurrentUser = message.sender._id === currentUserId
+                  const isUnread = !message.read && message.sender._id !== currentUserId
 
-                return (
-                  <div key={message._id} className={`flex ${isSentByCurrentUser ? "justify-end" : "justify-start"}`}>
-                    {!isSentByCurrentUser && isFirstMessageOfGroup && (
-                      <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2 self-end mb-1">
-                        {getUserInitials(message.sender.name)}
-                      </div>
-                    )}
-
-                    <div className={`max-w-[75%] ${isFirstMessageOfGroup ? "mt-2" : "mt-1"}`}>
-                      <div
-                        className={`p-3 rounded-2xl ${
-                          isSentByCurrentUser
-                            ? "bg-blue-500 text-white"
-                            : isUnread
-                              ? "bg-white shadow-sm border-l-4 border-blue-500"
-                              : "bg-white shadow-sm"
-                        } ${!isFirstMessageOfGroup && isSentByCurrentUser ? "rounded-tr-sm" : ""} ${
-                          !isFirstMessageOfGroup && !isSentByCurrentUser ? "rounded-tl-sm" : ""
-                        } ${isSentByCurrentUser ? "rounded-br-sm" : "rounded-bl-sm"}`}
-                      >
-                        <p className="break-words">{message.content}</p>
-                      </div>
-                      {isLastMessageOfGroup && (
-                        <div
-                          className={`flex items-center mt-1 ${isSentByCurrentUser ? "justify-end" : "justify-start"}`}
-                        >
-                          <p className="text-xs text-gray-500">
-                            {formatTime(message.timestamp)}
-                            {isSentByCurrentUser && (
-                              <span className={`ml-1 ${message.read ? "text-blue-500" : "text-gray-400"}`}>
-                                {message.read ? "Read" : "Sent"}
-                              </span>
-                            )}
-                          </p>
+                  return (
+                    <div key={message._id} className={`flex ${isSentByCurrentUser ? "justify-end" : "justify-start"}`}>
+                      {!isSentByCurrentUser && isFirstMessageOfGroup && (
+                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2 self-end mb-1">
+                          {getUserInitials(message.sender.name)}
                         </div>
                       )}
+
+                      <div className={`max-w-[75%] ${isFirstMessageOfGroup ? "mt-2" : "mt-1"}`}>
+                        <div
+                          className={`p-3 rounded-2xl ${
+                            isSentByCurrentUser
+                              ? "bg-blue-500 text-white"
+                              : isUnread
+                                ? "bg-white shadow-sm border-l-4 border-blue-500"
+                                : "bg-white shadow-sm"
+                          } ${!isFirstMessageOfGroup && isSentByCurrentUser ? "rounded-tr-sm" : ""} ${
+                            !isFirstMessageOfGroup && !isSentByCurrentUser ? "rounded-tl-sm" : ""
+                          } ${isSentByCurrentUser ? "rounded-br-sm" : "rounded-bl-sm"}`}
+                        >
+                          <p className="break-words">{message.content}</p>
+                        </div>
+                        {isLastMessageOfGroup && (
+                          <div
+                            className={`flex items-center mt-1 ${isSentByCurrentUser ? "justify-end" : "justify-start"}`}
+                          >
+                            <p className="text-xs text-gray-500">
+                              {formatTime(message.timestamp)}
+                              {isSentByCurrentUser && (
+                                <span className={`ml-1 ${message.read ? "text-blue-500" : "text-gray-400"}`}>
+                                  {message.read ? "Read" : "Sent"}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          ))
+                  )
+                })}
+              </div>
+            ))
         )}
         <div ref={messagesEndRef} />
       </div>

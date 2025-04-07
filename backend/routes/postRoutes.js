@@ -13,22 +13,18 @@ const {
   likePost,
   addComment,
   deleteComment,
+  getPostsByUserId, // ✅ Import
 } = require("../controllers/postController");
 
-// Add upload.single('image') middleware for the create post route
 router.post("/", protect, checkProfile, upload.single("image"), createPost);
 router.get("/", protect, checkProfile, getMyPosts);
 router.get("/allposts", protect, checkProfile, getAllPosts);
+router.get("/user/:userId", protect, checkProfile, getPostsByUserId); // ✅ NEW route
 
 router.put("/:id", protect, checkProfile, updatePost);
 router.delete("/:id", protect, checkProfile, deletePost);
 router.put("/:id/like", protect, checkProfile, likePost);
 router.post("/:id/comments", protect, checkProfile, addComment);
-router.delete(
-  "/:postId/comments/:commentId",
-  protect,
-  checkProfile,
-  deleteComment
-); // Delete comments
+router.delete("/:postId/comments/:commentId", protect, checkProfile, deleteComment);
 
 module.exports = router;

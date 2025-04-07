@@ -95,9 +95,9 @@ const PostCard = ({ post, index }) => {
             </div>
           </div>
 
-          <a href={`/posts/${post._id}`} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+          {/* <a href={`/posts/${post._id}`} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
             View Details
-          </a>
+          </a> */}
         </div>
       </div>
     </motion.div>

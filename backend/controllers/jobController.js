@@ -42,7 +42,7 @@ const createJob = async (req, res) => {
     console.log("✅ Job created successfully:", job);
 
     // Add job to embedding database
-    await jobService.addJobToEmbeddingDatabase(job);
+    // await jobService.addJobToEmbeddingDatabase(job);
 
     // Update matching profiles with this new job
     const updateResult = await jobService.updateProfilesForNewJob(job._id);

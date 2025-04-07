@@ -1,7 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Profile = require("../models/profileModel");
 const User = require("../models/userModel");
-const jobService = require("../services/jobService");
+const profileService = require("../services/profileService");
 
 // @desc    Create user profile
 // @route   POST /api/profiles
@@ -13,6 +13,7 @@ const createOrUpdateProfile = async (req, res) => {
 
     // Find existing profile
     let profile = await Profile.findOne({ user: req.user._id });
+    let isNewProfile = false;
 
     if (profile) {
       // Update existing profile
@@ -28,6 +29,7 @@ const createOrUpdateProfile = async (req, res) => {
       console.log(`✅ Profile updated for user: ${req.user._id}`);
     } else {
       // Create new profile
+      isNewProfile = true;
       profile = await Profile.create({
         user: req.user._id,
         bio,
@@ -41,8 +43,12 @@ const createOrUpdateProfile = async (req, res) => {
       console.log(`✅ Profile created for user: ${req.user._id}`);
     }
 
-    // Update profile with matching jobs
-    await profileService.updateProfileWithMatchingJobs(profile._id);
+    // Use the appropriate function based on whether this is a new profile or an update
+    if (isNewProfile) {
+      await profileService.updateProfileForNewProfile(profile._id);
+    } else {
+      await profileService.updateProfileForProfileUpdate(profile._id);
+    }
 
     res.status(200).json(profile);
   } catch (error) {
@@ -93,6 +99,8 @@ const updateOwnProfile = asyncHandler(async (req, res) => {
   
 
   const updatedProfile = await profile.save();
+  await profileService.updateProfileForProfileUpdate(profile._id);
+
   res.json(updatedProfile);
 });
 
@@ -125,10 +133,27 @@ const viewAllProfiles = asyncHandler(async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// @access  Private
+const getProfileByUserId = asyncHandler(async (req, res) => {
+  try {
+    const profile = await Profile.findOne({ user: req.params.userId }).populate("user", "-password");
+
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    res.status(200).json(profile);
+  } catch (error) {
+    console.error("Error fetching profile by user ID:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 module.exports = {
   createOrUpdateProfile,
   viewOwnProfile,
   updateOwnProfile,
   deleteOwnProfile,
   viewAllProfiles,
+  getProfileByUserId
 };
